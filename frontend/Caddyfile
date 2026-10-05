@@ -1,0 +1,25 @@
+{$SITE_ADDRESS} {
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	handle {
+		root * /srv
+		# Assets CRA hashés : cache long ; le reste (index.html des routes SPA) : revalidé à chaque fois
+		@static path /static/*
+		@notStatic not path /static/*
+		header @static Cache-Control "public, max-age=31536000, immutable"
+		header @notStatic Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

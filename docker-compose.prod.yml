@@ -1,0 +1,62 @@
+# Production : docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# Seul Caddy (web) est exposé ; Postgres et l'API restent sur le réseau Docker interne.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      POSTGRES_DB: arece_db
+      POSTGRES_USER: arece
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arece -d arece_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://arece:${POSTGRES_PASSWORD}@postgres:5432/arece_db
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
+      CORS_ORIGIN: ${PUBLIC_URL:-http://localhost}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      # ':80' = HTTP sur l'IP ; mettre un nom de domaine (ex: annuaire.arece.fr) active le HTTPS automatique
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
