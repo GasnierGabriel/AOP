@@ -120,7 +120,8 @@ export default function TagDialog({ tag, onSave, onDelete, onClose }) {
             <input
               value={emoji}
               onChange={(e) => setEmoji(e.target.value)}
-              placeholder="…ou colle n'importe quel emoji (Win + .  /  Ctrl + Cmd + Espace)"
+              placeholder="…ou colle un autre emoji"
+              title="Clavier emoji : Win + .  (Windows) ou Ctrl + Cmd + Espace (Mac)"
               maxLength={16}
               aria-label="Emoji personnalisé"
             />

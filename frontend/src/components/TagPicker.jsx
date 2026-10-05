@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // Menu de sélection façon Discord. À placer dans un parent `position: relative`
 // qui contient aussi le bouton d'ouverture (les clics dedans ne ferment pas le menu).
@@ -14,6 +14,13 @@ export default function TagPicker({
   const ref = useRef(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const [alignRight, setAlignRight] = useState(false);
+
+  // Ouvre le menu vers la gauche s'il déborderait de la fenêtre à droite
+  useLayoutEffect(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect && rect.right > document.documentElement.clientWidth - 8) setAlignRight(true);
+  }, []);
 
   useEffect(() => {
     const handleMouseDown = (e) => {
@@ -54,7 +61,7 @@ export default function TagPicker({
   };
 
   return (
-    <div className="tag-popover" ref={ref}>
+    <div className={`tag-popover ${alignRight ? 'tag-popover-right' : ''}`} ref={ref}>
       <input
         autoFocus
         value={query}

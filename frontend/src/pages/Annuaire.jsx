@@ -36,8 +36,6 @@ function MemberCard({ member }) {
 
       {member.promo && <p className="muted small">Promo {member.promo}</p>}
 
-      <TagList tags={member.tags} />
-
       {member.currentRoles.length > 0 && (
         <div className="chips">
           {member.currentRoles.map((role) => (
@@ -48,6 +46,8 @@ function MemberCard({ member }) {
           ))}
         </div>
       )}
+
+      <TagList tags={member.tags} />
 
       {member.competitions.length > 0 && (
         <div className="chips">

@@ -14,8 +14,8 @@ export function RoleTimeline({ roles }) {
         <li key={role.id} className={role.isCurrent ? 'timeline-current' : ''}>
           <div className="timeline-title">
             {role.name}
-            {role.pole && <span className="muted"> · {role.pole}</span>}
-            {role.isCurrent && <span className="chip chip-primary small">Actuel</span>}
+            {role.pole && <span className="timeline-pole"> · {role.pole}</span>}
+            {role.isCurrent && <span className="chip chip-current">Actuel</span>}
           </div>
           <div className="muted small">
             {formatDate(role.startDate)} → {role.endDate ? formatDate(role.endDate) : "aujourd'hui"}
