@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { errorMessage } from '../api';
+import PromoSelect from '../components/PromoSelect';
 
 const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
 
@@ -10,6 +11,7 @@ export default function Signup({ onAuth }) {
     full_name: '',
     email: '',
     linkedinUrl: '',
+    promo: null,
     password: '',
     confirmPassword: '',
   });
@@ -38,6 +40,7 @@ export default function Signup({ onAuth }) {
         fullName: form.full_name,
         email: form.email,
         linkedinUrl: form.linkedinUrl,
+        promo: form.promo,
         password: form.password,
       });
       onAuth(data.token);
@@ -70,6 +73,14 @@ export default function Signup({ onAuth }) {
             onChange={handleChange}
             placeholder="https://www.linkedin.com/in/ton-profil"
             required
+          />
+        </label>
+        <label>
+          Promo
+          <PromoSelect
+            value={form.promo}
+            onChange={(promo) => setForm({ ...form, promo })}
+            emptyLabel="Choisis ta promo (facultatif)"
           />
         </label>
         <label>

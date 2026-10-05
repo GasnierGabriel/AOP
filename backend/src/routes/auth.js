@@ -10,7 +10,7 @@ const {
   getCurrentAcademicYear,
   getAskAreceAccess,
 } = require('../auth');
-const { formatUser, getFullMember } = require('../members');
+const { cleanPromo, PROMO_ERROR, formatUser, getFullMember } = require('../members');
 
 const router = express.Router();
 
@@ -24,7 +24,7 @@ function selfView(row) {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
 
-function validateSignup({ email, password, fullName, linkedinUrl }) {
+function validateSignup({ email, password, fullName, linkedinUrl, promo }) {
   if (typeof email !== 'string' || !EMAIL_RE.test(email.trim())) return 'Email invalide';
   if (typeof password !== 'string' || password.length < 8) {
     return 'Le mot de passe doit contenir au moins 8 caractères';
@@ -35,6 +35,8 @@ function validateSignup({ email, password, fullName, linkedinUrl }) {
   if (typeof linkedinUrl !== 'string' || !LINKEDIN_RE.test(linkedinUrl.trim())) {
     return 'URL LinkedIn invalide (ex : https://www.linkedin.com/in/ton-profil)';
   }
+  // Promo facultative (les membres honoraires n'en ont pas)
+  if (promo !== undefined && cleanPromo(promo) === undefined) return PROMO_ERROR();
   return null;
 }
 
@@ -50,10 +52,16 @@ router.post('/signup', async (req, res) => {
   try {
     await client.query('BEGIN');
     const { rows } = await client.query(
-      `INSERT INTO users (email, password_hash, full_name, linkedin_url)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (email, password_hash, full_name, linkedin_url, promo)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING ${userColumns()}`,
-      [body.email.trim().toLowerCase(), passwordHash, body.fullName.trim(), body.linkedinUrl.trim()]
+      [
+        body.email.trim().toLowerCase(),
+        passwordHash,
+        body.fullName.trim(),
+        body.linkedinUrl.trim(),
+        body.promo === undefined ? null : cleanPromo(body.promo),
+      ]
     );
     user = rows[0];
     await client.query('INSERT INTO user_profile (user_id) VALUES ($1)', [user.id]);

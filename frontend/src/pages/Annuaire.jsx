@@ -82,6 +82,7 @@ export default function Annuaire() {
   const [filter, setFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState(null); // id du tag filtré
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [promoFilter, setPromoFilter] = useState(''); // '' = toutes les promos
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -117,18 +118,25 @@ export default function Annuaire() {
   }, [members]);
   const selectedTag = availableTags.find((t) => t.id === tagFilter);
 
+  // Promos présentes parmi les membres visibles, de la plus récente à la plus ancienne
+  const availablePromos = useMemo(
+    () => [...new Set(members.map((m) => m.promo).filter(Boolean))].sort((a, b) => b - a),
+    [members]
+  );
+
   const visibleMembers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return members.filter(
       (m) =>
         (filter === 'all' || m.status === filter) &&
         (!tagFilter || m.tags.some((t) => t.id === tagFilter)) &&
+        (!promoFilter || m.promo === Number(promoFilter)) &&
         (!term ||
           m.fullName.toLowerCase().includes(term) ||
           m.currentRoles.some((r) => r.name.toLowerCase().includes(term)) ||
           m.tags.some((t) => t.name.toLowerCase().includes(term)))
     );
-  }, [members, filter, tagFilter, search]);
+  }, [members, filter, tagFilter, promoFilter, search]);
 
   if (loading) return <div className="loading">Chargement de l'annuaire…</div>;
 
@@ -210,6 +218,21 @@ export default function Annuaire() {
               />
             )}
           </div>
+        )}
+        {availablePromos.length > 0 && (
+          <select
+            className={`filter promo-filter ${promoFilter ? 'filter-active' : ''}`}
+            value={promoFilter}
+            onChange={(e) => setPromoFilter(e.target.value)}
+            aria-label="Filtrer par promo"
+          >
+            <option value="">Toutes les promos</option>
+            {availablePromos.map((promo) => (
+              <option key={promo} value={promo}>
+                Promo {promo}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 

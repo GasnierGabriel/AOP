@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api, { errorMessage } from '../api';
 import CompetitionsEditor from '../components/CompetitionsEditor';
+import PromoSelect from '../components/PromoSelect';
 import RolesEditor from '../components/RolesEditor';
 import StatusBadge from '../components/StatusBadge';
 import TagList from '../components/TagList';
@@ -14,7 +15,7 @@ const ASK_ARECE_LABELS = {
 
 export default function Profile() {
   const [me, setMe] = useState(null);
-  const [form, setForm] = useState({ bio: '', achievements: '' });
+  const [form, setForm] = useState({ bio: '', achievements: '', promo: null });
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -25,7 +26,7 @@ export default function Profile() {
       .get('/auth/me')
       .then(({ data }) => {
         setMe(data);
-        setForm({ bio: data.user.profile.bio, achievements: data.user.profile.achievements });
+        setForm({ bio: data.user.profile.bio, achievements: data.user.profile.achievements, promo: data.user.promo });
       })
       .catch((err) => setLoadError(errorMessage(err, 'Impossible de charger ton profil')));
   }, []);
@@ -42,7 +43,8 @@ export default function Profile() {
     setSuccess(false);
     try {
       const { data } = await api.put('/annuaire/profile', form);
-      setForm({ bio: data.profile.bio, achievements: data.profile.achievements });
+      setForm({ bio: data.profile.bio, achievements: data.profile.achievements, promo: data.promo });
+      setMe((prev) => ({ ...prev, user: { ...prev.user, promo: data.promo } }));
       setSuccess(true);
     } catch (err) {
       setSaveError(errorMessage(err, "Échec de l'enregistrement"));
@@ -106,6 +108,17 @@ export default function Profile() {
 
       <form className="card form" onSubmit={handleSubmit}>
         <h2>Modifier mon profil</h2>
+        <label>
+          Promo
+          <PromoSelect
+            value={form.promo}
+            onChange={(promo) => {
+              setSuccess(false);
+              setForm({ ...form, promo });
+            }}
+            className="promo-select"
+          />
+        </label>
         <label>
           Bio
           <textarea name="bio" rows={5} maxLength={5000} value={form.bio} onChange={handleChange} placeholder="Parcours, formation, centres d'intérêt…" />
