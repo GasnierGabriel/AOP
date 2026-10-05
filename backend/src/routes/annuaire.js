@@ -85,6 +85,15 @@ async function userExists(id) {
   return rowCount > 0;
 }
 
+// Le niveau d'accès (1/2) est une donnée interne : seul le bureau le voit
+function forViewer(viewer, member) {
+  if (viewer.is_bureau) return member;
+  const { level, ...visible } = member;
+  return visible;
+}
+
+const STATUSES = ['active', 'alumni', 'honorary', 'prospect'];
+
 // GET /api/annuaire/members — membres visibles selon les permissions du viewer
 router.get('/members', requireMember, async (req, res) => {
   const { rows } = await query(`SELECT ${userColumns()} FROM users ORDER BY full_name`);
@@ -99,12 +108,14 @@ router.get('/members', requireMember, async (req, res) => {
 
   res.json({
     academicYear: getCurrentAcademicYear().label,
-    members: visible.map((u) => ({
-      ...formatUser(u),
-      currentRoles: roles.get(u.id) || [],
-      competitions: competitions.get(u.id) || [],
-      tags: tags.get(u.id) || [],
-    })),
+    members: visible.map((u) =>
+      forViewer(req.user, {
+        ...formatUser(u),
+        currentRoles: roles.get(u.id) || [],
+        competitions: competitions.get(u.id) || [],
+        tags: tags.get(u.id) || [],
+      })
+    ),
   });
 });
 
@@ -121,10 +132,79 @@ router.get('/members/:id', requireMember, async (req, res) => {
   }
 
   res.json({
-    member: await getFullMember(target),
+    member: forViewer(req.user, await getFullMember(target)),
     canManageTags: req.user.is_bureau,
     canEditCareer: req.user.is_bureau || req.user.id === target.id,
   });
+});
+
+// DELETE /api/annuaire/members/:id — suppression définitive d'un compte (bureau).
+// Profil, rôles, compétitions, tags attribués et sessions partent avec (ON DELETE CASCADE).
+router.delete('/members/:id', requireBureau, async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
+  if (id === req.user.id) {
+    return res.status(400).json({ error: 'Tu ne peux pas supprimer ton propre compte' });
+  }
+
+  const { rows } = await query('SELECT is_bureau FROM users WHERE id = $1', [id]);
+  if (rows.length === 0) return res.status(404).json({ error: 'Membre introuvable' });
+  // Évite de supprimer un membre du bureau par erreur (et garantit qu'il en reste toujours un)
+  if (rows[0].is_bureau) {
+    return res.status(409).json({ error: "Retire d'abord ce membre du bureau avant de supprimer son compte" });
+  }
+
+  await query('DELETE FROM users WHERE id = $1', [id]);
+  res.status(204).end();
+});
+
+// PATCH /api/annuaire/members/:id/access { status?, isBureau?, level? } — gestion des accès (bureau)
+router.patch('/members/:id/access', requireBureau, async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
+  const { status, isBureau, level } = req.body || {};
+
+  if (status !== undefined && !STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide' });
+  }
+  if (isBureau !== undefined && typeof isBureau !== 'boolean') {
+    return res.status(400).json({ error: 'Valeur « bureau » invalide' });
+  }
+  if (level !== undefined && level !== 1 && level !== 2) {
+    return res.status(400).json({ error: 'Niveau invalide (1 ou 2)' });
+  }
+  if (status === undefined && isBureau === undefined && level === undefined) {
+    return res.status(400).json({ error: 'Rien à modifier' });
+  }
+
+  const { rows } = await query(`SELECT ${userColumns()} FROM users WHERE id = $1`, [id]);
+  const target = rows[0];
+  if (!target) return res.status(404).json({ error: 'Membre introuvable' });
+
+  const next = {
+    status: status ?? target.status,
+    is_bureau: isBureau ?? target.is_bureau,
+    level: level ?? target.level,
+  };
+  if (next.is_bureau && next.status === 'prospect') {
+    return res.status(400).json({ error: 'Un membre du bureau ne peut pas être prospect' });
+  }
+
+  // Ne jamais retirer le dernier membre du bureau (sinon plus personne ne peut gérer les accès)
+  if (target.is_bureau && !next.is_bureau) {
+    const { rows: count } = await query('SELECT COUNT(*)::int AS n FROM users WHERE is_bureau');
+    if (count[0].n <= 1) {
+      return res.status(409).json({ error: 'Il doit rester au moins un membre du bureau' });
+    }
+  }
+
+  const { rows: updated } = await query(
+    `UPDATE users SET status = $2, is_bureau = $3, level = $4, updated_at = NOW()
+      WHERE id = $1
+      RETURNING ${userColumns()}`,
+    [id, next.status, next.is_bureau, next.level]
+  );
+  res.json({ member: formatUser(updated[0]) });
 });
 
 // GET /api/annuaire/tags — tous les tags existants avec leur nombre de membres (bureau)

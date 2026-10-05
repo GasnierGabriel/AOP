@@ -75,9 +75,12 @@ export default function Profile() {
             {user.email}
             {user.promo && <> · Promo {user.promo}</>}
           </p>
-          <p className="muted small">
-            Niveau d'accès {user.level} · Ask ARECE : {ASK_ARECE_LABELS[permissions.askArece]}
-          </p>
+          {/* Le niveau d'accès n'est visible que par le bureau (l'API ne l'envoie qu'à lui) */}
+          {user.isBureau && (
+            <p className="muted small">
+              Niveau d'accès {user.level} · Ask ARECE : {ASK_ARECE_LABELS[permissions.askArece]}
+            </p>
+          )}
         </div>
         {user.linkedinUrl && (
           <a className="btn btn-primary" href={user.linkedinUrl} target="_blank" rel="noopener noreferrer">

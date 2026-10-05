@@ -6,6 +6,7 @@ import Signup from './pages/Signup';
 import Annuaire from './pages/Annuaire';
 import MemberDetail from './pages/MemberDetail';
 import Profile from './pages/Profile';
+import Gestion from './pages/Gestion';
 
 // Logo officiel (blanc sur fond transparent), servi par le site vitrine
 const LOGO_URL = 'https://arece.eu/images/ARECEV_FF_SVG_no_flag.png';
@@ -22,6 +23,8 @@ function Divider() {
 
 function Navbar({ session, onLogout }) {
   const { pathname } = useLocation();
+  const isBureau = session?.user.isBureau;
+  const pending = session?.permissions.pendingProspects || 0;
   return (
     <header className="navbar">
       <div className="navbar-inner">
@@ -36,12 +39,26 @@ function Navbar({ session, onLogout }) {
           >
             Annuaire
           </NavLink>
-          <NavLink to="/profile">Mon profil</NavLink>
+          <NavLink to="/profile">
+            <span className="label-long">Mon profil</span>
+            <span className="label-short">Profil</span>
+          </NavLink>
+          {isBureau && (
+            <NavLink to="/gestion">
+              Gestion
+              {pending > 0 && (
+                <span className="nav-badge" title={`${pending} inscription(s) en attente`}>
+                  {pending}
+                </span>
+              )}
+            </NavLink>
+          )}
         </nav>
         <div className="navbar-user">
           {session && <span className="navbar-name">{session.user.fullName}</span>}
-          <button type="button" className="btn btn-outline btn-sm" onClick={onLogout}>
-            Déconnexion
+          <button type="button" className="btn btn-outline btn-sm" onClick={onLogout} aria-label="Déconnexion">
+            <span className="label-long">Déconnexion</span>
+            <span className="label-short" aria-hidden="true">⏻</span>
           </button>
         </div>
       </div>
@@ -58,6 +75,11 @@ function PrivateRoute({ token, loading, children }) {
 
 function PublicOnlyRoute({ token, children }) {
   return token ? <Navigate to="/annuaire" replace /> : children;
+}
+
+// Pages réservées au bureau (l'API vérifie aussi les droits)
+function BureauRoute({ session, children }) {
+  return session?.user.isBureau ? children : <Navigate to="/annuaire" replace />;
 }
 
 export default function App() {
@@ -81,6 +103,13 @@ export default function App() {
       cancelled = true;
     };
   }, [token]);
+
+  // Recharge la session (droits, compteur d'inscriptions en attente) après une modification d'accès
+  const refreshSession = () =>
+    api
+      .get('/auth/me')
+      .then((res) => setSession(res.data))
+      .catch(() => {});
 
   const handleAuth = (newToken) => {
     localStorage.setItem(TOKEN_KEY, newToken);
@@ -122,6 +151,14 @@ export default function App() {
           <Route path="/annuaire" element={privateEl(<Annuaire />)} />
           <Route path="/member/:id" element={privateEl(<MemberDetail />)} />
           <Route path="/profile" element={privateEl(<Profile />)} />
+          <Route
+            path="/gestion"
+            element={privateEl(
+              <BureauRoute session={session}>
+                <Gestion session={session} onSessionChange={refreshSession} />
+              </BureauRoute>
+            )}
+          />
           <Route path="*" element={<Navigate to={token ? '/annuaire' : '/login'} replace />} />
         </Routes>
       </main>
