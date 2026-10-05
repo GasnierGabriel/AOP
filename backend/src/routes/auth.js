@@ -14,6 +14,13 @@ const { formatUser, getFullMember } = require('../members');
 
 const router = express.Router();
 
+// Le niveau d'accès (1/2) n'est communiqué qu'aux membres du bureau
+function selfView(row) {
+  const user = formatUser(row);
+  if (!row.is_bureau) delete user.level;
+  return user;
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
 
@@ -62,7 +69,7 @@ router.post('/signup', async (req, res) => {
   }
 
   const token = await issueToken(user.id);
-  res.status(201).json({ user: formatUser(user), token });
+  res.status(201).json({ user: selfView(user), token });
 });
 
 // POST /api/auth/login
@@ -82,20 +89,24 @@ router.post('/login', async (req, res) => {
   }
 
   const token = await issueToken(user.id);
-  res.json({ user: formatUser(user), token });
+  res.json({ user: selfView(user), token });
 });
 
 // GET /api/auth/me — utilisateur courant + rôles + compétitions + profil
+// Le niveau d'accès (1/2) n'est communiqué qu'aux membres du bureau.
 router.get('/me', authenticateToken, async (req, res) => {
   const user = await getFullMember(req.user);
-  res.json({
-    user,
-    permissions: {
-      canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
-      askArece: getAskAreceAccess(req.user),
-    },
-    academicYear: getCurrentAcademicYear().label,
-  });
+  const permissions = { canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect' };
+
+  if (req.user.is_bureau) {
+    permissions.askArece = getAskAreceAccess(req.user);
+    const { rows } = await query("SELECT COUNT(*)::int AS count FROM users WHERE status = 'prospect'");
+    permissions.pendingProspects = rows[0].count;
+  } else {
+    delete user.level;
+  }
+
+  res.json({ user, permissions, academicYear: getCurrentAcademicYear().label });
 });
 
 // POST /api/auth/logout — invalide le token côté serveur

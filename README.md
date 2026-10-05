@@ -18,15 +18,17 @@ docker-compose exec backend npm run migrate
 
 ### Premier membre du bureau
 
-Toute inscription crée un compte `prospect` (aucun accès). Il n'y a pas encore d'écran
-d'administration : pour promouvoir le premier compte bureau, crée ton compte via
-`/signup`, puis :
+Toute inscription crée un compte `prospect` (aucun accès). Le bureau valide ensuite les
+inscriptions et gère statuts, bureau et niveaux depuis la page **Gestion**. Seul le tout
+premier compte bureau doit être promu à la main : crée ton compte via `/signup`, puis :
 
 ```bash
 docker-compose exec postgres psql -U arece -d arece_db -c "UPDATE users SET status='active', is_bureau=true, level=2, updated_at=NOW() WHERE email='ton.email@exemple.fr';"
 ```
 
-Même principe pour valider un prospect (`status='active'`, `level=1|2`).
+Le niveau d'accès (1/2) est une donnée interne : il n'est visible et modifiable que par le
+bureau (l'API ne l'envoie pas aux autres membres). Il est impossible de retirer le dernier
+membre du bureau, et un membre du bureau ne peut pas être prospect.
 
 ### Permissions (rôles d'accès)
 
@@ -55,6 +57,8 @@ les sortants en `alumni` à chaque rentrée).
 | GET     | `/api/annuaire/members`       | ✔ membre |
 | GET     | `/api/annuaire/members/:id`   | ✔ membre |
 | PUT     | `/api/annuaire/profile`       | ✔    |
+| PATCH   | `/api/annuaire/members/:id/access` `{ status?, isBureau?, level? }` | ✔ bureau |
+| DELETE  | `/api/annuaire/members/:id`   | ✔ bureau (ni soi-même, ni un membre du bureau) |
 | GET     | `/api/annuaire/tags`          | ✔ bureau |
 | POST    | `/api/annuaire/tags` `{ name, color, emoji }` | ✔ bureau |
 | PATCH   | `/api/annuaire/tags/:id` `{ name?, color?, emoji? }` | ✔ bureau |
