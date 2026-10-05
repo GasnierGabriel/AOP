@@ -217,6 +217,7 @@ a:hover {
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  white-space: nowrap;
   transition: color 0.2s;
 }
 .navbar-links a:hover { color: var(--white); text-decoration: none; }
@@ -235,7 +236,12 @@ a:hover {
   align-items: center;
   gap: 14px;
 }
-.navbar-name { font-size: 0.88rem; font-weight: 500; }
+.navbar-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; }
+/* Largeur intermédiaire : on libère de la place pour les liens (Annuaire, Profil, Gestion) */
+@media (max-width: 900px) {
+  .navbar-name { display: none; }
+  .navbar-inner { gap: 16px; }
+}
 
 .label-short { display: none; }
 .nav-badge {
@@ -457,6 +463,9 @@ textarea { resize: vertical; }
   font-size: 0.72rem;
 }
 .filter-active .filter-count { background: var(--red); color: var(--white); }
+select.filter { width: auto; padding-right: 10px; }
+.promo-filter option { color: var(--navy); background: var(--white); text-transform: none; }
+.promo-select { max-width: 260px; }
 
 .grid {
   display: grid;
@@ -1038,7 +1047,7 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .access-table { padding: 0; overflow: hidden; }
 .access-row {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) minmax(140px, 1fr) 70px minmax(120px, 0.8fr) 64px;
+  grid-template-columns: minmax(0, 2.2fr) minmax(130px, 1fr) minmax(120px, 0.9fr) 60px minmax(110px, 0.8fr) 64px;
   align-items: center;
   gap: 16px;
   padding: 12px 20px;
@@ -1132,7 +1141,7 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 760px) {
   .access-head { display: none; }
   .access-row {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr;
     gap: 10px 12px;
     padding: 14px 16px;
   }

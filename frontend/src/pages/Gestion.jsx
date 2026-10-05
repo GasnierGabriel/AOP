@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import DeleteMemberDialog from '../components/DeleteMemberDialog';
+import PromoSelect from '../components/PromoSelect';
 import StatusBadge from '../components/StatusBadge';
 import { formatDate, initials } from '../utils';
 
@@ -212,6 +213,7 @@ export default function Gestion({ session, onSessionChange }) {
         <div className="access-row access-head" role="row">
           <span role="columnheader">Membre</span>
           <span role="columnheader">Statut</span>
+          <span role="columnheader">Promo</span>
           <span role="columnheader">Bureau</span>
           <span role="columnheader">Niveau</span>
         </div>
@@ -243,6 +245,17 @@ export default function Gestion({ session, onSessionChange }) {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="access-cell" role="cell">
+              <span className="access-label">Promo</span>
+              <PromoSelect
+                value={m.promo}
+                disabled={saving[m.id]}
+                onChange={(promo) => updateAccess(m, { promo })}
+                emptyLabel="—"
+                aria-label={`Promo de ${m.fullName}`}
+              />
             </label>
 
             <label className="access-cell access-check" role="cell">

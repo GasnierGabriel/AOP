@@ -57,7 +57,7 @@ les sortants en `alumni` à chaque rentrée).
 | GET     | `/api/annuaire/members`       | ✔ membre |
 | GET     | `/api/annuaire/members/:id`   | ✔ membre |
 | PUT     | `/api/annuaire/profile`       | ✔    |
-| PATCH   | `/api/annuaire/members/:id/access` `{ status?, isBureau?, level? }` | ✔ bureau |
+| PATCH   | `/api/annuaire/members/:id/access` `{ status?, isBureau?, level?, promo? }` | ✔ bureau |
 | DELETE  | `/api/annuaire/members/:id`   | ✔ bureau (ni soi-même, ni un membre du bureau) |
 | GET     | `/api/annuaire/tags`          | ✔ bureau |
 | POST    | `/api/annuaire/tags` `{ name, color, emoji }` | ✔ bureau |

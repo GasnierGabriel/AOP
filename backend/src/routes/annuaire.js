@@ -9,6 +9,8 @@ const {
   getCurrentAcademicYear,
 } = require('../auth');
 const {
+  cleanPromo,
+  PROMO_ERROR,
   formatUser,
   getRolesByUserIds,
   getCompetitionsByUserIds,
@@ -158,7 +160,7 @@ router.delete('/members/:id', requireBureau, async (req, res) => {
   res.status(204).end();
 });
 
-// PATCH /api/annuaire/members/:id/access { status?, isBureau?, level? } — gestion des accès (bureau)
+// PATCH /api/annuaire/members/:id/access { status?, isBureau?, level?, promo? } — gestion des membres (bureau)
 router.patch('/members/:id/access', requireBureau, async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
@@ -173,7 +175,11 @@ router.patch('/members/:id/access', requireBureau, async (req, res) => {
   if (level !== undefined && level !== 1 && level !== 2) {
     return res.status(400).json({ error: 'Niveau invalide (1 ou 2)' });
   }
-  if (status === undefined && isBureau === undefined && level === undefined) {
+  const promo = req.body?.promo === undefined ? undefined : cleanPromo(req.body.promo);
+  if (req.body?.promo !== undefined && promo === undefined) {
+    return res.status(400).json({ error: PROMO_ERROR() });
+  }
+  if (status === undefined && isBureau === undefined && level === undefined && promo === undefined) {
     return res.status(400).json({ error: 'Rien à modifier' });
   }
 
@@ -185,6 +191,7 @@ router.patch('/members/:id/access', requireBureau, async (req, res) => {
     status: status ?? target.status,
     is_bureau: isBureau ?? target.is_bureau,
     level: level ?? target.level,
+    promo: promo === undefined ? target.promo : promo,
   };
   if (next.is_bureau && next.status === 'prospect') {
     return res.status(400).json({ error: 'Un membre du bureau ne peut pas être prospect' });
@@ -199,10 +206,10 @@ router.patch('/members/:id/access', requireBureau, async (req, res) => {
   }
 
   const { rows: updated } = await query(
-    `UPDATE users SET status = $2, is_bureau = $3, level = $4, updated_at = NOW()
+    `UPDATE users SET status = $2, is_bureau = $3, level = $4, promo = $5, updated_at = NOW()
       WHERE id = $1
       RETURNING ${userColumns()}`,
-    [id, next.status, next.is_bureau, next.level]
+    [id, next.status, next.is_bureau, next.level, next.promo]
   );
   res.json({ member: formatUser(updated[0]) });
 });
@@ -304,9 +311,13 @@ router.delete('/members/:id/tags/:tagId', requireBureau, async (req, res) => {
   res.json({ tags: tags.get(id) || [] });
 });
 
-// PUT /api/annuaire/profile — mise à jour de sa propre bio / ses réalisations
+// PUT /api/annuaire/profile — mise à jour de sa propre bio / ses réalisations / sa promo
 router.put('/profile', async (req, res) => {
   const { bio, achievements } = req.body || {};
+  const promo = req.body?.promo === undefined ? undefined : cleanPromo(req.body.promo);
+  if (req.body?.promo !== undefined && promo === undefined) {
+    return res.status(400).json({ error: PROMO_ERROR() });
+  }
   for (const [field, value] of Object.entries({ bio, achievements })) {
     if (value === undefined || value === null) continue;
     if (typeof value !== 'string') {
@@ -328,6 +339,9 @@ router.put('/profile', async (req, res) => {
      RETURNING bio, achievements, updated_at`,
     [req.user.id, bio ?? null, achievements ?? null]
   );
+  if (promo !== undefined) {
+    await query('UPDATE users SET promo = $2, updated_at = NOW() WHERE id = $1', [req.user.id, promo]);
+  }
 
   const profile = rows[0];
   res.json({
@@ -336,6 +350,7 @@ router.put('/profile', async (req, res) => {
       achievements: profile.achievements || '',
       updatedAt: profile.updated_at,
     },
+    promo: promo === undefined ? req.user.promo : promo,
   });
 });
 

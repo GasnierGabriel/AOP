@@ -16,6 +16,16 @@ function formatUser(row) {
   };
 }
 
+// Promo : une année plausible, ou null (ex : membre honoraire). undefined = invalide.
+const PROMO_MIN = 2015;
+const promoMax = () => new Date().getFullYear() + 5;
+function cleanPromo(value) {
+  if (value === null || value === '') return null;
+  const promo = Number(value);
+  return Number.isInteger(promo) && promo >= PROMO_MIN && promo <= promoMax() ? promo : undefined;
+}
+const PROMO_ERROR = () => `Promo invalide (entre ${PROMO_MIN} et ${promoMax()})`;
+
 function groupByUser(rows, format) {
   const map = new Map();
   for (const row of rows) {
@@ -120,6 +130,8 @@ async function getFullMember(userRow) {
 }
 
 module.exports = {
+  cleanPromo,
+  PROMO_ERROR,
   formatUser,
   getRolesByUserIds,
   getCompetitionsByUserIds,
