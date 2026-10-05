@@ -77,6 +77,9 @@ function parseTagInput(body = {}, { partial = false } = {}) {
 
 const TAG_NAME_TAKEN = { error: 'Un tag porte déjà ce nom' };
 
+// Rôles et compétitions éditables (soi-même ou bureau)
+require('./career')(router);
+
 async function userExists(id) {
   const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1', [id]);
   return rowCount > 0;
@@ -120,6 +123,7 @@ router.get('/members/:id', requireMember, async (req, res) => {
   res.json({
     member: await getFullMember(target),
     canManageTags: req.user.is_bureau,
+    canEditCareer: req.user.is_bureau || req.user.id === target.id,
   });
 });
 

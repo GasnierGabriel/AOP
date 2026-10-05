@@ -1,50 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
-import StatusBadge from '../components/StatusBadge';
+import { CompetitionList, RoleTimeline } from '../components/CareerLists';
+import CompetitionsEditor from '../components/CompetitionsEditor';
 import MemberTags from '../components/MemberTags';
+import RolesEditor from '../components/RolesEditor';
+import StatusBadge from '../components/StatusBadge';
 import TagList from '../components/TagList';
-import { formatDate, initials } from '../utils';
-
-export function RoleTimeline({ roles }) {
-  if (roles.length === 0) return <p className="muted">Aucun rôle enregistré.</p>;
-  return (
-    <ol className="timeline">
-      {roles.map((role) => (
-        <li key={role.id} className={role.isCurrent ? 'timeline-current' : ''}>
-          <div className="timeline-title">
-            {role.name}
-            {role.pole && <span className="timeline-pole"> · {role.pole}</span>}
-            {role.isCurrent && <span className="chip chip-current">Actuel</span>}
-          </div>
-          <div className="muted small">
-            {formatDate(role.startDate)} → {role.endDate ? formatDate(role.endDate) : "aujourd'hui"}
-          </div>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-export function CompetitionList({ competitions }) {
-  if (competitions.length === 0) return <p className="muted">Aucune compétition.</p>;
-  return (
-    <ul className="competition-list">
-      {competitions.map((c) => (
-        <li key={c.id}>
-          <strong>{c.name}</strong>
-          {c.role && <span className="chip">{c.role}</span>}
-        </li>
-      ))}
-    </ul>
-  );
-}
+import { initials } from '../utils';
 
 export default function MemberDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [member, setMember] = useState(null);
   const [canManageTags, setCanManageTags] = useState(false);
+  const [canEditCareer, setCanEditCareer] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,6 +25,7 @@ export default function MemberDetail() {
       .then(({ data }) => {
         setMember(data.member);
         setCanManageTags(data.canManageTags);
+        setCanEditCareer(data.canEditCareer);
       })
       .catch((err) => setError(errorMessage(err, 'Impossible de charger ce membre')));
   }, [id]);
@@ -101,11 +72,27 @@ export default function MemberDetail() {
           <div className="detail-grid">
             <section className="card">
               <h2>Rôles</h2>
-              <RoleTimeline roles={member.roles} />
+              {canEditCareer ? (
+                <RolesEditor
+                  memberId={member.id}
+                  roles={member.roles}
+                  onChange={(roles) => setMember((prev) => ({ ...prev, roles }))}
+                />
+              ) : (
+                <RoleTimeline roles={member.roles} />
+              )}
             </section>
             <section className="card">
               <h2>Compétitions</h2>
-              <CompetitionList competitions={member.competitions} />
+              {canEditCareer ? (
+                <CompetitionsEditor
+                  memberId={member.id}
+                  competitions={member.competitions}
+                  onChange={(competitions) => setMember((prev) => ({ ...prev, competitions }))}
+                />
+              ) : (
+                <CompetitionList competitions={member.competitions} />
+              )}
             </section>
             <section className="card">
               <h2>Bio</h2>

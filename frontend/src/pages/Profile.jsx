@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import api, { errorMessage } from '../api';
+import CompetitionsEditor from '../components/CompetitionsEditor';
+import RolesEditor from '../components/RolesEditor';
 import StatusBadge from '../components/StatusBadge';
 import TagList from '../components/TagList';
 import { initials } from '../utils';
-import { CompetitionList, RoleTimeline } from './MemberDetail';
 
 const ASK_ARECE_LABELS = {
   full: 'Complet',
@@ -54,6 +55,7 @@ export default function Profile() {
   if (!me) return <div className="loading">Chargement…</div>;
 
   const { user, permissions } = me;
+  const setUserField = (field) => (value) => setMe((prev) => ({ ...prev, user: { ...prev.user, [field]: value } }));
 
   return (
     <div className="detail">
@@ -87,11 +89,15 @@ export default function Profile() {
       <div className="detail-grid">
         <section className="card">
           <h2>Mes rôles</h2>
-          <RoleTimeline roles={user.roles} />
+          <RolesEditor memberId={user.id} roles={user.roles} onChange={setUserField('roles')} />
         </section>
         <section className="card">
           <h2>Mes compétitions</h2>
-          <CompetitionList competitions={user.competitions} />
+          <CompetitionsEditor
+            memberId={user.id}
+            competitions={user.competitions}
+            onChange={setUserField('competitions')}
+          />
         </section>
       </div>
 

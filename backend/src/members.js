@@ -54,7 +54,7 @@ async function getRolesByUserIds(userIds, { currentOnly = false } = {}) {
 async function getCompetitionsByUserIds(userIds) {
   if (userIds.length === 0) return new Map();
   const { rows } = await query(
-    `SELECT uc.id, uc.user_id, uc.competition_id, uc.role, c.name, c.year
+    `SELECT uc.id, uc.user_id, uc.competition_id, uc.events, uc.result, uc.comment, c.name, c.year
        FROM user_competitions uc
        JOIN competitions c ON c.id = uc.competition_id
       WHERE uc.user_id = ANY($1::int[])
@@ -66,7 +66,9 @@ async function getCompetitionsByUserIds(userIds) {
     competitionId: r.competition_id,
     name: r.name,
     year: r.year,
-    role: r.role,
+    events: r.events,
+    result: r.result,
+    comment: r.comment,
   }));
 }
 
