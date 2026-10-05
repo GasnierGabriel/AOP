@@ -5,6 +5,7 @@ import StatusBadge from '../components/StatusBadge';
 import TagList from '../components/TagList';
 import TagPicker from '../components/TagPicker';
 import TagPill from '../components/TagPill';
+import { formatRank } from '../catalog';
 import { initials } from '../utils';
 
 const FILTERS = [
@@ -52,8 +53,9 @@ function MemberCard({ member }) {
       {member.competitions.length > 0 && (
         <div className="chips">
           {member.competitions.map((c) => (
-            <span key={c.id} className="chip" title={c.role || undefined}>
-              🏁 {c.name}
+            <span key={c.id} className="chip" title={c.events?.map((e) => e.name).join(', ') || undefined}>
+              🏁 {c.name} {c.year}
+              {c.result && ` · ${formatRank(c.result)}`}
             </span>
           ))}
         </div>

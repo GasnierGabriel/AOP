@@ -40,6 +40,8 @@ CREATE TABLE IF NOT EXISTS user_roles (
   CHECK (end_date IS NULL OR end_date >= start_date)
 );
 CREATE INDEX IF NOT EXISTS user_roles_user_id_idx ON user_roles (user_id);
+-- Noms de rôles uniques sans tenir compte de la casse ("Trésorier" = "trésorier")
+CREATE UNIQUE INDEX IF NOT EXISTS roles_name_lower_idx ON roles (LOWER(name));
 
 CREATE TABLE IF NOT EXISTS competitions (
   id         SERIAL PRIMARY KEY,
@@ -48,15 +50,38 @@ CREATE TABLE IF NOT EXISTS competitions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (name, year)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS competitions_name_lower_year_idx ON competitions (LOWER(name), year);
 
 CREATE TABLE IF NOT EXISTS user_competitions (
   id             SERIAL PRIMARY KEY,
   user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   competition_id INTEGER NOT NULL REFERENCES competitions(id) ON DELETE CASCADE,
-  role           VARCHAR(100),
+  events         JSONB NOT NULL DEFAULT '[]',  -- épreuves préparées : [{ "name": "...", "rank": 1 | null }]
+  result         SMALLINT CHECK (result IS NULL OR result >= 1),  -- classement général (Challenge Awake)
+  comment        TEXT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, competition_id)
 );
+-- Bases existantes : anciennes colonnes "role" (texte) puis "roles" (liste) converties en "events"
+ALTER TABLE user_competitions ADD COLUMN IF NOT EXISTS events JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE user_competitions ADD COLUMN IF NOT EXISTS result SMALLINT CHECK (result IS NULL OR result >= 1);
+ALTER TABLE user_competitions ADD COLUMN IF NOT EXISTS comment TEXT;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_name = 'user_competitions' AND column_name = 'role') THEN
+    UPDATE user_competitions SET events = jsonb_build_array(jsonb_build_object('name', role, 'rank', NULL))
+     WHERE role IS NOT NULL AND events = '[]';
+    ALTER TABLE user_competitions DROP COLUMN role;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_name = 'user_competitions' AND column_name = 'roles') THEN
+    UPDATE user_competitions
+       SET events = (SELECT COALESCE(jsonb_agg(jsonb_build_object('name', r, 'rank', NULL)), '[]')
+                       FROM unnest(roles) AS r)
+     WHERE events = '[]';
+    ALTER TABLE user_competitions DROP COLUMN roles;
+  END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS user_competitions_user_id_idx ON user_competitions (user_id);
 
 CREATE TABLE IF NOT EXISTS user_profile (

@@ -318,7 +318,7 @@ a:hover {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-input, textarea {
+input, textarea, select {
   width: 100%;
   padding: 11px 12px;
   border: 1px solid var(--border);
@@ -332,7 +332,8 @@ input, textarea {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.8; }
-input:focus, textarea:focus {
+select { cursor: pointer; }
+input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--focus);
   box-shadow: 0 0 0 3px var(--focus-ring);
@@ -573,6 +574,160 @@ textarea { resize: vertical; }
   border-bottom: 1px solid var(--border);
 }
 .competition-list li:last-child { border-bottom: none; }
+.competition-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.competition-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.competition-year { color: var(--muted); font-weight: 600; }
+.chip-rank { background: var(--navy); color: var(--white); font-weight: 600; }
+.competition-roles { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Sélection multiple d'épreuves / rôles */
+.role-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.role-group { display: flex; flex-direction: column; gap: 6px; }
+.role-group-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.role-group-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.role-chip {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.role-chip:hover { border-color: var(--navy); }
+.role-chip.selected { background: var(--navy); border-color: var(--navy); color: var(--white); }
+.role-chip:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+/* Épreuves choisies, avec leur classement */
+.event-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.event-row + .event-row { border-top: 1px solid var(--border); }
+.event-row-name { flex: 1; min-width: 0; font-size: 0.88rem; font-weight: 500; }
+.form .event-row-rank {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.event-row-rank input { width: 64px; padding: 5px 8px; text-align: center; }
+.event-rank { font-weight: 600; }
+.competition-comment {
+  margin: 2px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+.role-custom { display: flex; gap: 8px; }
+.role-custom input { flex: 1; min-width: 0; padding: 7px 10px; font-size: 0.85rem; }
+
+/* Édition du parcours (rôles / compétitions) */
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.item-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.timeline li:hover .item-actions,
+.competition-list li:hover .item-actions,
+.item-actions:focus-within { opacity: 1; }
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.icon-btn-danger:hover:not(:disabled) { background: rgba(230, 23, 47, 0.08); color: var(--red); }
+.icon-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; }
+.item-highlight { background: var(--surface-2); border-radius: var(--radius); }
+.timeline li.item-highlight { margin-left: -6px; padding-left: 18px; }
+.timeline li.item-highlight::before { left: -19px; }
+.add-btn { margin-top: 16px; }
+.career-form {
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.career-form h3 { font-size: 0.82rem; margin: 0; }
+/* 2 colonnes si la carte est assez large, sinon 1 (les champs date ont une largeur minimale) */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.form-grid > * { min-width: 0; }
+.form-grid .span-2 { grid-column: 1 / -1; }
+.form .check-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.check-label input { width: 16px; height: 16px; accent-color: var(--navy); }
+input:disabled { opacity: 0.5; cursor: not-allowed; }
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (hover: none) {
+  .item-actions { opacity: 1; }
+}
 
 /* Tags façon rôles Discord */
 .tag-list {
