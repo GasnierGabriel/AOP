@@ -467,39 +467,122 @@ select.filter { width: auto; padding-right: 10px; }
 .promo-filter option { color: var(--navy); background: var(--white); text-transform: none; }
 .promo-select { max-width: 260px; }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 20px;
-}
-.member-card {
-  display: flex;
-  flex-direction: column;
-  padding: 22px;
-  cursor: pointer;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.member-card:hover,
-.member-card:focus-visible {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  outline: none;
-}
-.member-card-header {
+/* Annuaire en tableau triable */
+.results-bar {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  margin: -8px 0 12px;
+  font-size: 0.85rem;
 }
-.member-card h3 { margin-bottom: 6px; }
-.member-card .muted { margin: 12px 0 0; }
-.linkedin-link {
-  align-self: flex-start;
-  margin-top: auto;
-  padding-top: 16px;
-  font-size: 0.78rem;
+.results-actions { display: flex; align-items: center; gap: 8px; }
+.mobile-sort { display: none; }
+.mobile-sort option { color: var(--navy); background: var(--white); }
+.card.directory { padding: 0; overflow: hidden; }
+.directory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.directory-table th {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  text-align: left;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.sort-button:hover,
+.sort-button.is-active { color: var(--navy); }
+.sort-arrow { font-size: 0.65rem; opacity: 0.45; }
+.sort-button.is-active .sort-arrow { opacity: 1; color: var(--red); }
+.directory-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.directory-table tbody tr:last-child td { border-bottom: none; }
+.member-row { cursor: pointer; transition: background 0.15s; }
+.member-row:hover { background: var(--hover); }
+.member-row:hover .member-cell a { text-decoration: underline; }
+.member-cell { display: flex; align-items: center; gap: 10px; }
+.member-cell a { font-weight: 600; color: var(--navy); white-space: nowrap; }
+.avatar-sm { width: 32px; height: 32px; font-size: 0.72rem; }
+.cell-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.directory-table .chip { white-space: nowrap; }
+.directory-table .tag-list { margin-top: 0; }
+.directory-table .badges { flex-wrap: nowrap; }
+.col-promo { white-space: nowrap; font-weight: 500; }
+.cell-prefix { display: none; }
+.directory-table .col-linkedin { width: 48px; text-align: right; }
+.linkedin-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: var(--white);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.linkedin-icon:hover { background: var(--blue); text-decoration: none; }
+.linkedin-icon:focus-visible,
+.sort-button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+@media (max-width: 1000px) {
+  .directory-table .col-competitions { display: none; }
+}
+/* Mobile : chaque ligne devient un bloc compact (le tri passe par la liste « Trier ») */
+@media (max-width: 760px) {
+  .mobile-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+  }
+  .mobile-sort select { width: auto; padding: 5px 8px; font-size: 0.8rem; }
+  .directory-table thead { display: none; }
+  .directory-table,
+  .directory-table tbody { display: block; }
+  .member-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .member-row:last-child { border-bottom: none; }
+  .directory-table .member-row td { display: block; padding: 0; border: none; }
+  .member-row .col-name { grid-column: 1; }
+  .member-row .col-linkedin { grid-column: 2; grid-row: 1; }
+  .member-row .col-status,
+  .member-row .col-promo,
+  .member-row .col-role,
+  .member-row .col-tags,
+  .member-row .col-competitions { grid-column: 1 / -1; }
+  .member-row .is-empty { display: none; }
+  .member-row .col-promo { font-size: 0.8rem; color: var(--muted); }
+  .cell-prefix { display: inline; }
 }
 
 .avatar {

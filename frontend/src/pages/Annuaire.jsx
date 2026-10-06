@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import StatusBadge from '../components/StatusBadge';
 import TagList from '../components/TagList';
@@ -15,77 +15,172 @@ const FILTERS = [
   { key: 'honorary', label: 'Honoraires' },
 ];
 
-function MemberCard({ member }) {
+const COLUMNS = [
+  { key: 'name', label: 'Membre', sortable: true },
+  { key: 'status', label: 'Statut', sortable: true },
+  { key: 'promo', label: 'Promo', sortable: true, defaultDir: 'desc' }, // plus récente d'abord
+  { key: 'role', label: 'Rôle actuel', sortable: true },
+  { key: 'tags', label: 'Tags' },
+  { key: 'competitions', label: 'Compétitions' },
+  { key: 'linkedin', label: '', srLabel: 'LinkedIn' },
+];
+
+const collator = new Intl.Collator('fr', { sensitivity: 'base' });
+const byName = (a, b) => collator.compare(a.fullName, b.fullName);
+const STATUS_ORDER = { active: 0, honorary: 1, alumni: 2, prospect: 3 };
+
+// Valeur triée pour les colonnes où elle peut manquer (toujours en fin de liste)
+const OPTIONAL_VALUES = {
+  promo: (m) => m.promo ?? null,
+  role: (m) => m.currentRoles[0]?.name ?? null,
+};
+
+function sortMembers(list, key, dir) {
+  const sign = dir === 'desc' ? -1 : 1;
+  return [...list].sort((a, b) => {
+    if (OPTIONAL_VALUES[key]) {
+      const va = OPTIONAL_VALUES[key](a);
+      const vb = OPTIONAL_VALUES[key](b);
+      if (va === null || vb === null) return va === vb ? byName(a, b) : va === null ? 1 : -1;
+      const diff = typeof va === 'number' ? va - vb : collator.compare(va, vb);
+      return sign * diff || byName(a, b);
+    }
+    if (key === 'status') {
+      // Bureau en tête, puis actifs, honoraires, alumni, prospects
+      const diff = b.isBureau - a.isBureau || STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      return sign * diff || byName(a, b);
+    }
+    return sign * byName(a, b);
+  });
+}
+
+// « Formula Student UK 2026 » → « FSUK 26 » pour tenir dans la colonne
+const COMPETITION_SHORT = { 'formula student uk': 'FSUK', 'formula student france': 'FSF', 'challenge awake': 'Awake' };
+const shortCompetition = (c) =>
+  `${COMPETITION_SHORT[c.name.toLowerCase()] || c.name} ${String(c.year).slice(2)}${c.result ? ` ${formatRank(c.result)}` : ''}`;
+const competitionDetail = (c) =>
+  [`${c.name} ${c.year}`, ...(c.events || []).map((e) => `${e.name}${e.rank ? ` (${e.rank}e)` : ''}`)].join(' · ');
+
+function SortHeader({ column, sortKey, sortDir, onSort }) {
+  if (!column.sortable) {
+    return (
+      <th scope="col" className={`col-${column.key}`}>
+        {column.label || <span className="sr-only">{column.srLabel}</span>}
+      </th>
+    );
+  }
+  const active = sortKey === column.key;
+  return (
+    <th
+      scope="col"
+      className={`col-${column.key}`}
+      aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      <button type="button" className={`sort-button ${active ? 'is-active' : ''}`} onClick={() => onSort(column)}>
+        {column.label}
+        <span className="sort-arrow" aria-hidden="true">
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+}
+
+function MemberRow({ member }) {
   const navigate = useNavigate();
-  const open = () => navigate(`/member/${member.id}`);
+  const shown = member.competitions.slice(0, 2);
+  const hidden = member.competitions.length - shown.length;
 
   return (
-    <div
-      className="card member-card"
-      role="link"
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={(e) => e.key === 'Enter' && open()}
-    >
-      <div className="member-card-header">
-        <div className="avatar">{initials(member.fullName)}</div>
-        <div>
-          <h3>{member.fullName}</h3>
-          <StatusBadge status={member.status} isBureau={member.isBureau} />
+    <tr className="member-row" onClick={() => navigate(`/member/${member.id}`)}>
+      <td className="col-name">
+        <div className="member-cell">
+          <div className="avatar avatar-sm">{initials(member.fullName)}</div>
+          <Link to={`/member/${member.id}`} onClick={(e) => e.stopPropagation()}>
+            {member.fullName}
+          </Link>
         </div>
-      </div>
-
-      {member.promo && <p className="muted small">Promo {member.promo}</p>}
-
-      {member.currentRoles.length > 0 && (
-        <div className="chips">
-          {member.currentRoles.map((role) => (
-            <span key={role.id} className="chip chip-primary">
-              {role.name}
-              {role.pole ? ` · ${role.pole}` : ''}
+      </td>
+      <td className="col-status">
+        <StatusBadge status={member.status} isBureau={member.isBureau} />
+      </td>
+      <td className={`col-promo ${member.promo ? '' : 'is-empty'}`}>
+        <span className="cell-prefix">Promo </span>
+        {member.promo || <span className="muted">—</span>}
+      </td>
+      <td className={`col-role ${member.currentRoles.length ? '' : 'is-empty'}`}>
+        {member.currentRoles.length > 0 ? (
+          <div className="cell-chips">
+            {member.currentRoles.map((role) => (
+              <span key={role.id} className="chip chip-primary" title={role.pole || undefined}>
+                {role.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td className={`col-tags ${member.tags.length ? '' : 'is-empty'}`}>
+        <TagList tags={member.tags} />
+      </td>
+      <td className={`col-competitions ${member.competitions.length ? '' : 'is-empty'}`}>
+        <div className="cell-chips">
+          {shown.map((c) => (
+            <span key={c.id} className="chip" title={competitionDetail(c)}>
+              {shortCompetition(c)}
             </span>
           ))}
-        </div>
-      )}
-
-      <TagList tags={member.tags} />
-
-      {member.competitions.length > 0 && (
-        <div className="chips">
-          {member.competitions.map((c) => (
-            <span key={c.id} className="chip" title={c.events?.map((e) => e.name).join(', ') || undefined}>
-              🏁 {c.name} {c.year}
-              {c.result && ` · ${formatRank(c.result)}`}
+          {hidden > 0 && (
+            <span className="chip" title={member.competitions.slice(2).map(competitionDetail).join('\n')}>
+              +{hidden}
             </span>
-          ))}
+          )}
         </div>
-      )}
-
-      {member.linkedinUrl && (
-        <a
-          className="linkedin-link"
-          href={member.linkedinUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-        >
-          LinkedIn ↗
-        </a>
-      )}
-    </div>
+      </td>
+      <td className="col-linkedin">
+        {member.linkedinUrl && (
+          <a
+            href={member.linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`LinkedIn de ${member.fullName}`}
+            title="LinkedIn"
+            className="linkedin-icon"
+          >
+            in
+          </a>
+        )}
+      </td>
+    </tr>
   );
 }
 
 export default function Annuaire() {
   const [members, setMembers] = useState([]);
   const [academicYear, setAcademicYear] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [tagFilter, setTagFilter] = useState(null); // id du tag filtré
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
-  const [promoFilter, setPromoFilter] = useState(''); // '' = toutes les promos
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Filtres et tri dans l'URL : conservés au retour d'une fiche, et partageables
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') || '';
+  const filter = params.get('statut') || 'all';
+  const tagFilter = params.get('tag') ? Number(params.get('tag')) : null;
+  const promoFilter = params.get('promo') || '';
+  const sortKey = params.get('tri') || 'name';
+  const sortDir = params.get('ordre') || 'asc';
+
+  const updateParams = (changes) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null || value === '' || value === undefined) next.delete(key);
+      else next.set(key, value);
+    }
+    setParams(next, { replace: true });
+  };
 
   useEffect(() => {
     api
@@ -114,7 +209,7 @@ export default function Annuaire() {
         byId.set(t.id, entry);
       }
     }
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    return [...byId.values()].sort((a, b) => collator.compare(a.name, b.name));
   }, [members]);
   const selectedTag = availableTags.find((t) => t.id === tagFilter);
 
@@ -126,7 +221,7 @@ export default function Annuaire() {
 
   const visibleMembers = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return members.filter(
+    const filtered = members.filter(
       (m) =>
         (filter === 'all' || m.status === filter) &&
         (!tagFilter || m.tags.some((t) => t.id === tagFilter)) &&
@@ -136,7 +231,15 @@ export default function Annuaire() {
           m.currentRoles.some((r) => r.name.toLowerCase().includes(term)) ||
           m.tags.some((t) => t.name.toLowerCase().includes(term)))
     );
-  }, [members, filter, tagFilter, promoFilter, search]);
+    return sortMembers(filtered, sortKey, sortDir);
+  }, [members, filter, tagFilter, promoFilter, search, sortKey, sortDir]);
+
+  const hasFilters = Boolean(search || filter !== 'all' || tagFilter || promoFilter);
+
+  const handleSort = (column) => {
+    if (sortKey === column.key) updateParams({ ordre: sortDir === 'asc' ? 'desc' : 'asc' });
+    else updateParams({ tri: column.key === 'name' ? null : column.key, ordre: column.defaultDir || null });
+  };
 
   if (loading) return <div className="loading">Chargement de l'annuaire…</div>;
 
@@ -163,7 +266,7 @@ export default function Annuaire() {
           className="search"
           placeholder="Rechercher un nom, un rôle, un tag…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => updateParams({ q: e.target.value })}
         />
       </div>
 
@@ -173,7 +276,7 @@ export default function Annuaire() {
             key={f.key}
             type="button"
             className={`filter ${filter === f.key ? 'filter-active' : ''}`}
-            onClick={() => setFilter(f.key)}
+            onClick={() => updateParams({ statut: f.key === 'all' ? null : f.key })}
           >
             {f.label} <span className="filter-count">{counts[f.key] || 0}</span>
           </button>
@@ -188,7 +291,7 @@ export default function Annuaire() {
                 <button
                   type="button"
                   className="filter-tag-clear"
-                  onClick={() => setTagFilter(null)}
+                  onClick={() => updateParams({ tag: null })}
                   aria-label="Retirer le filtre de tag"
                   title="Retirer le filtre"
                 >
@@ -210,7 +313,7 @@ export default function Annuaire() {
                 options={availableTags}
                 selectedIds={new Set(tagFilter ? [tagFilter] : [])}
                 onSelect={(tag) => {
-                  setTagFilter(tag.id === tagFilter ? null : tag.id);
+                  updateParams({ tag: tag.id === tagFilter ? null : tag.id });
                   setTagPickerOpen(false);
                 }}
                 onClose={() => setTagPickerOpen(false)}
@@ -223,7 +326,7 @@ export default function Annuaire() {
           <select
             className={`filter promo-filter ${promoFilter ? 'filter-active' : ''}`}
             value={promoFilter}
-            onChange={(e) => setPromoFilter(e.target.value)}
+            onChange={(e) => updateParams({ promo: e.target.value })}
             aria-label="Filtrer par promo"
           >
             <option value="">Toutes les promos</option>
@@ -236,13 +339,60 @@ export default function Annuaire() {
         )}
       </div>
 
+      <div className="results-bar">
+        <span className="muted">
+          {visibleMembers.length} membre{visibleMembers.length > 1 ? 's' : ''}
+          {hasFilters && ` sur ${members.length}`}
+        </span>
+        <div className="results-actions">
+          {hasFilters && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => updateParams({ q: null, statut: null, tag: null, promo: null })}
+            >
+              Réinitialiser les filtres
+            </button>
+          )}
+          {/* Sur mobile les en-têtes de colonnes sont masqués : le tri passe par cette liste */}
+          <label className="mobile-sort">
+            Trier
+            <select
+              value={`${sortKey}:${sortDir}`}
+              onChange={(e) => {
+                const [tri, ordre] = e.target.value.split(':');
+                updateParams({ tri: tri === 'name' ? null : tri, ordre: ordre === 'asc' ? null : ordre });
+              }}
+            >
+              <option value="name:asc">Nom (A → Z)</option>
+              <option value="name:desc">Nom (Z → A)</option>
+              <option value="status:asc">Statut</option>
+              <option value="promo:desc">Promo (récentes)</option>
+              <option value="promo:asc">Promo (anciennes)</option>
+              <option value="role:asc">Rôle actuel</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       {visibleMembers.length === 0 ? (
         <p className="muted empty-state">Aucun membre ne correspond.</p>
       ) : (
-        <div className="grid">
-          {visibleMembers.map((m) => (
-            <MemberCard key={m.id} member={m} />
-          ))}
+        <div className="card directory">
+          <table className="directory-table">
+            <thead>
+              <tr>
+                {COLUMNS.map((column) => (
+                  <SortHeader key={column.key} column={column} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleMembers.map((m) => (
+                <MemberRow key={m.id} member={m} />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </>
