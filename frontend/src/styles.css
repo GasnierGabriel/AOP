@@ -1392,6 +1392,17 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .follow-up-overdue { color: var(--red); font-weight: 600; }
 .follow-up-soon { color: var(--orange); font-weight: 600; }
 .search-sm { width: 220px; padding: 7px 10px; font-size: 0.85rem; }
+/* Rangs de sponsoring */
+.field-required select { border-color: var(--red); box-shadow: 0 0 0 3px rgba(230, 23, 47, 0.12); }
+.new-tier { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+.new-tier input[type='text'], .new-tier input:not([type]) { flex: 1; min-width: 160px; padding: 7px 10px; }
+.new-tier input[type='color'] { width: 42px; height: 34px; padding: 2px; cursor: pointer; }
+.tier-list { list-style: none; margin: 12px 0; padding: 0; }
+.tier-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.tier-list li + li { border-top: 1px solid var(--border); }
+.tier-actions { margin-left: auto; display: flex; gap: 2px; }
+.sponsor-table .col-tier { white-space: nowrap; }
+.tier-missing { color: var(--red); font-size: 0.8rem; font-weight: 600; }
 .modal-wide { max-width: 640px; }
 .form-fieldset {
   margin: 0;

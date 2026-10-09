@@ -154,6 +154,22 @@ CREATE TABLE IF NOT EXISTS sponsors (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS sponsors_name_lower_idx ON sponsors (LOWER(name));
 
+-- Rangs de sponsoring (obligatoire une fois signé) : Bronze, Argent, Or, Platine + rangs créés par l'équipe
+CREATE TABLE IF NOT EXISTS sponsor_tiers (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(40) NOT NULL,
+  color      VARCHAR(7) NOT NULL DEFAULT '#99aab5',
+  position   INTEGER NOT NULL DEFAULT 0,  -- ordre d'importance croissant
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS sponsor_tiers_name_lower_idx ON sponsor_tiers (LOWER(name));
+-- Rangs de départ, créés une seule fois (l'équipe peut ensuite les modifier ou les supprimer)
+INSERT INTO sponsor_tiers (name, color, position)
+SELECT * FROM (VALUES ('Bronze', '#cd7f32', 1), ('Argent', '#9ea3a8', 2), ('Or', '#d4a017', 3), ('Platine', '#6f8fa3', 4))
+  AS v(name, color, position)
+WHERE NOT EXISTS (SELECT 1 FROM sponsor_tiers);
+ALTER TABLE sponsors ADD COLUMN IF NOT EXISTS tier_id INTEGER REFERENCES sponsor_tiers(id) ON DELETE RESTRICT;
+
 -- Wiki de l'asso : catégories, pages (Markdown) et historique des versions
 CREATE TABLE IF NOT EXISTS wiki_categories (
   id          SERIAL PRIMARY KEY,

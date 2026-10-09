@@ -13,10 +13,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_RE = /^https?:\/\/\S+\.\S+/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const COLOR_RE = /^#[0-9a-f]{6}$/i;
+const TIER_REQUIRED = { error: 'Indique le rang du partenaire signé (Bronze, Argent, Or, Platine…)', code: 'TIER_REQUIRED' };
+
 const SELECT_SPONSORS = `
-  SELECT s.*, o.full_name AS owner_name
+  SELECT s.*, o.full_name AS owner_name,
+         t.name AS tier_name, t.color AS tier_color, t.position AS tier_position
     FROM sponsors s
-    LEFT JOIN users o ON o.id = s.owner_id`;
+    LEFT JOIN users o ON o.id = s.owner_id
+    LEFT JOIN sponsor_tiers t ON t.id = s.tier_id`;
+
+const formatTier = (r) => ({ id: r.id, name: r.name, color: r.color, position: r.position });
 
 function formatSponsor(row) {
   return {
@@ -31,6 +38,9 @@ function formatSponsor(row) {
     contactPhone: row.contact_phone || '',
     website: row.website || '',
     owner: row.owner_id ? { id: row.owner_id, fullName: row.owner_name } : null,
+    tier: row.tier_id
+      ? { id: row.tier_id, name: row.tier_name, color: row.tier_color, position: row.tier_position }
+      : null,
     nextActionDate: row.next_action_date,
     notes: row.notes || '',
     createdAt: row.created_at,
@@ -131,6 +141,15 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
     }
     values.owner_id = ownerId;
   }
+  if (has('tierId')) {
+    const tierId = body.tierId === null || body.tierId === '' || body.tierId === undefined ? null : Number(body.tierId);
+    if (tierId !== null) {
+      if (!Number.isInteger(tierId) || tierId <= 0) return fail('Rang introuvable');
+      const { rowCount } = await query('SELECT 1 FROM sponsor_tiers WHERE id = $1', [tierId]);
+      if (rowCount === 0) return fail('Rang introuvable');
+    }
+    values.tier_id = tierId;
+  }
 
   return { values };
 }
@@ -163,6 +182,7 @@ router.get('/team', async (req, res) => {
 router.post('/sponsors', async (req, res) => {
   const { values, error } = await parseSponsor(req.body);
   if (error) return res.status(400).json({ error });
+  if (values.status === 'signed' && !values.tier_id) return res.status(400).json(TIER_REQUIRED);
 
   values.created_by = req.user.id;
   const columns = Object.keys(values);
@@ -189,6 +209,14 @@ router.patch('/sponsors/:id', async (req, res) => {
 
   const columns = Object.keys(values); // colonnes issues de la liste blanche de parseSponsor
   if (columns.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+
+  // État final : un partenaire signé doit avoir un rang
+  const { rows: current } = await query('SELECT status, tier_id FROM sponsors WHERE id = $1', [id]);
+  if (current.length === 0) return res.status(404).json({ error: 'Partenaire introuvable' });
+  const finalStatus = values.status ?? current[0].status;
+  const finalTier = 'tier_id' in values ? values.tier_id : current[0].tier_id;
+  if (finalStatus === 'signed' && !finalTier) return res.status(400).json(TIER_REQUIRED);
+
   try {
     const { rowCount } = await query(
       `UPDATE sponsors SET ${columns.map((c, i) => `${c} = $${i + 2}`).join(', ')}, updated_at = NOW()
@@ -201,6 +229,86 @@ router.patch('/sponsors/:id', async (req, res) => {
     if (err.code === '23505') return res.status(409).json(NAME_TAKEN);
     throw err;
   }
+});
+
+/* ---------- Rangs (Bronze, Argent, Or, Platine + créés par l'équipe) ---------- */
+
+function parseTier(body = {}, { partial = false } = {}) {
+  const values = {};
+  if (body.name !== undefined || !partial) {
+    const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ') : '';
+    if (!name || name.length > 40) return { error: 'Nom du rang requis (40 caractères max)' };
+    values.name = name;
+  }
+  if (body.color !== undefined || !partial) {
+    const color = body.color ?? '#99aab5';
+    if (typeof color !== 'string' || !COLOR_RE.test(color)) return { error: 'Couleur invalide (format #rrggbb)' };
+    values.color = color.toLowerCase();
+  }
+  return { values };
+}
+const TIER_TAKEN = { error: 'Un rang porte déjà ce nom' };
+
+// GET /api/sponsoring/tiers — avec le nombre de partenaires de chaque rang
+router.get('/tiers', async (req, res) => {
+  const { rows } = await query(
+    `SELECT t.*, COUNT(s.id)::int AS sponsor_count
+       FROM sponsor_tiers t LEFT JOIN sponsors s ON s.tier_id = t.id
+      GROUP BY t.id ORDER BY t.position, LOWER(t.name)`
+  );
+  res.json({ tiers: rows.map((r) => ({ ...formatTier(r), sponsorCount: r.sponsor_count })) });
+});
+
+// POST /api/sponsoring/tiers { name, color } — nouveau rang, placé après les existants
+router.post('/tiers', async (req, res) => {
+  const { values, error } = parseTier(req.body);
+  if (error) return res.status(400).json({ error });
+  try {
+    const { rows } = await query(
+      `INSERT INTO sponsor_tiers (name, color, position)
+       VALUES ($1, $2, (SELECT COALESCE(MAX(position), 0) + 1 FROM sponsor_tiers))
+       RETURNING *`,
+      [values.name, values.color]
+    );
+    res.status(201).json({ tier: { ...formatTier(rows[0]), sponsorCount: 0 } });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json(TIER_TAKEN);
+    throw err;
+  }
+});
+
+// PATCH /api/sponsoring/tiers/:id { name?, color? }
+router.patch('/tiers/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
+  const { values, error } = parseTier(req.body, { partial: true });
+  if (error) return res.status(400).json({ error });
+  const columns = Object.keys(values); // name, color
+  if (columns.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+  try {
+    const { rows } = await query(
+      `UPDATE sponsor_tiers SET ${columns.map((c, i) => `${c} = $${i + 2}`).join(', ')} WHERE id = $1 RETURNING *`,
+      [id, ...columns.map((c) => values[c])]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Rang introuvable' });
+    res.json({ tier: formatTier(rows[0]) });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json(TIER_TAKEN);
+    throw err;
+  }
+});
+
+// DELETE /api/sponsoring/tiers/:id — uniquement s'il n'est attribué à aucun partenaire
+router.delete('/tiers/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
+  const { rows } = await query('SELECT COUNT(*)::int AS n FROM sponsors WHERE tier_id = $1', [id]);
+  if (rows[0].n > 0) {
+    return res.status(409).json({ error: `Ce rang est attribué à ${rows[0].n} partenaire(s) : change leur rang d'abord` });
+  }
+  const { rowCount } = await query('DELETE FROM sponsor_tiers WHERE id = $1', [id]);
+  if (rowCount === 0) return res.status(404).json({ error: 'Rang introuvable' });
+  res.status(204).end();
 });
 
 // DELETE /api/sponsoring/sponsors/:id
