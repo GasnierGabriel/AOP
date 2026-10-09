@@ -16,6 +16,10 @@ docker-compose exec backend npm run migrate
 - Backend : http://localhost:3000 (santé : `/api/health`)
 - DB : localhost:5432
 
+Production : **https://erp.arece.eu** (`docker-compose.prod.yml`). Caddy obtient et renouvelle
+seul le certificat Let's Encrypt dès que `SITE_ADDRESS` est un nom de domaine pointant vers le
+serveur ; `REDIRECT_FROM=http://<ip>` redirige l'ancienne adresse vers `PUBLIC_URL`.
+
 ### Premier membre du bureau
 
 Toute inscription crée un compte `prospect` (aucun accès). Le bureau valide ensuite les
