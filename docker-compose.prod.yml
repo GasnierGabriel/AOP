@@ -50,8 +50,11 @@ services:
     restart: unless-stopped
     logging: *logging
     environment:
-      # ':80' = HTTP sur l'IP ; mettre un nom de domaine (ex: annuaire.arece.fr) active le HTTPS automatique
+      # ':80' = HTTP sur l'IP ; mettre un nom de domaine (ex: erp.arece.eu) active le HTTPS automatique
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
+      # Ancienne adresse à rediriger vers PUBLIC_URL (ex: http://34.155.160.131) ; port interne inutilisé sinon
+      REDIRECT_FROM: ${REDIRECT_FROM:-:8099}
     ports:
       - "80:80"
       - "443:443"

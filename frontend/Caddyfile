@@ -5,6 +5,8 @@
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
+		# Une fois venu en HTTPS, le navigateur n'utilise plus que HTTPS pour ce domaine (ignoré en HTTP)
+		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
 
@@ -22,4 +24,10 @@
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+# Ancienne adresse (ex : http://<IP>) redirigée vers le site. Sans REDIRECT_FROM,
+# ce bloc écoute un port interne inutilisé et n'a aucun effet.
+{$REDIRECT_FROM} {
+	redir {$PUBLIC_URL}{uri} permanent
 }
