@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const googleRoutes = require('./routes/google');
 const annuaireRoutes = require('./routes/annuaire');
 const sponsoringRoutes = require('./routes/sponsoring');
+const wikiRoutes = require('./routes/wiki');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
@@ -16,7 +17,7 @@ const app = express();
 app.use(cors({
   origin: (process.env.CORS_ORIGIN || 'http://localhost:3001').split(',').map((o) => o.trim()),
 }));
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '512kb' })); // pages du wiki : jusqu'à 100 000 caractères
 
 app.get('/api/health', async (req, res) => {
   try {
@@ -31,6 +32,7 @@ app.use('/api/auth/google', googleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/annuaire', annuaireRoutes);
 app.use('/api/sponsoring', sponsoringRoutes);
+app.use('/api/wiki', wikiRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Route introuvable' });
@@ -40,6 +42,9 @@ app.use('/api', (req, res) => {
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'JSON invalide' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Contenu trop volumineux' });
   }
   console.error(err);
   const status = err.status || err.statusCode || 500;

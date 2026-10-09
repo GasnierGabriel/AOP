@@ -153,6 +153,52 @@ CREATE TABLE IF NOT EXISTS sponsors (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS sponsors_name_lower_idx ON sponsors (LOWER(name));
+
+-- Wiki de l'asso : catégories, pages (Markdown) et historique des versions
+CREATE TABLE IF NOT EXISTS wiki_categories (
+  id          SERIAL PRIMARY KEY,
+  name        VARCHAR(80) NOT NULL,
+  slug        VARCHAR(80) NOT NULL UNIQUE,
+  emoji       VARCHAR(16),
+  description VARCHAR(300),
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS wiki_categories_name_lower_idx ON wiki_categories (LOWER(name));
+-- Catégories de départ, créées une seule fois (le bureau peut ensuite les modifier ou les supprimer)
+INSERT INTO wiki_categories (name, slug, emoji, description, position)
+SELECT * FROM (VALUES
+  ('Administratif', 'administratif', '📋', 'Statuts, assurances, démarches école et préfecture…', 1),
+  ('Compétition', 'competition', '🏁', 'Inscriptions, règlements, logistique et retours d''expérience', 2),
+  ('Communication', 'communication', '📣', 'Réseaux sociaux, charte graphique, plaquette sponsors…', 3),
+  ('Technique', 'technique', '🔧', 'Process de conception, fabrication, logiciel et tests', 4),
+  ('Trésorerie', 'tresorerie', '💰', 'Budget, notes de frais, factures et subventions', 5)
+) AS v(name, slug, emoji, description, position)
+WHERE NOT EXISTS (SELECT 1 FROM wiki_categories);
+
+CREATE TABLE IF NOT EXISTS wiki_pages (
+  id          SERIAL PRIMARY KEY,
+  category_id INTEGER NOT NULL REFERENCES wiki_categories(id) ON DELETE RESTRICT,
+  title       VARCHAR(200) NOT NULL,
+  slug        VARCHAR(100) NOT NULL UNIQUE,
+  content     TEXT NOT NULL DEFAULT '',
+  created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS wiki_pages_category_idx ON wiki_pages (category_id);
+
+CREATE TABLE IF NOT EXISTS wiki_revisions (
+  id          SERIAL PRIMARY KEY,
+  page_id     INTEGER NOT NULL REFERENCES wiki_pages(id) ON DELETE CASCADE,
+  category_id INTEGER,
+  title       VARCHAR(200) NOT NULL,
+  content     TEXT NOT NULL,
+  edited_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS wiki_revisions_page_idx ON wiki_revisions (page_id, created_at DESC);
 `;
 
 // Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`

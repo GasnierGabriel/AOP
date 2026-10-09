@@ -10,6 +10,9 @@ import Gestion from './pages/Gestion';
 import Connexion from './pages/Connexion';
 import GoogleCallback from './pages/GoogleCallback';
 import Sponsoring from './pages/Sponsoring';
+import Wiki from './pages/Wiki';
+import WikiPage from './pages/WikiPage';
+import WikiEditor from './pages/WikiEditor';
 
 // Logo officiel (blanc sur fond transparent), servi par le site vitrine
 const LOGO_URL = 'https://arece.eu/images/ARECEV_FF_SVG_no_flag.png';
@@ -26,17 +29,32 @@ function Divider() {
 
 function Navbar({ session, onLogout }) {
   const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false); // menu déroulant sur mobile
   const isBureau = session?.user.isBureau;
+  const isMember = session?.permissions.canViewDirectory;
   const canSponsoring = session?.permissions.canAccessSponsoring;
   const pending = session?.permissions.pendingProspects || 0;
-  const linkCount = 2 + (canSponsoring ? 1 : 0) + (isBureau ? 1 : 0);
+
+  useEffect(() => setMenuOpen(false), [pathname]);
+
   return (
-    <header className={`navbar ${linkCount >= 4 ? 'navbar-crowded' : ''}`}>
+    <header className={`navbar ${menuOpen ? 'menu-open' : ''}`}>
       <div className="navbar-inner">
         <Link to="/annuaire" className="navbar-brand">
           <img src={LOGO_URL} alt="ARECE" className="navbar-logo" />
         </Link>
-        <nav className="navbar-links">
+        <button
+          type="button"
+          className="menu-toggle"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="main-nav"
+          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+        >
+          <span aria-hidden="true">{menuOpen ? '✕' : '☰'}</span>
+          {pending > 0 && !menuOpen && <span className="menu-toggle-dot" aria-hidden="true" />}
+        </button>
+        <nav id="main-nav" className="navbar-links">
           {/* Les fiches membres font partie de l'annuaire */}
           <NavLink
             to="/annuaire"
@@ -44,16 +62,9 @@ function Navbar({ session, onLogout }) {
           >
             Annuaire
           </NavLink>
-          <NavLink to="/profile">
-            <span className="label-long">Mon profil</span>
-            <span className="label-short">Profil</span>
-          </NavLink>
-          {canSponsoring && (
-            <NavLink to="/sponsoring">
-              <span className="label-long">Sponsoring</span>
-              <span className="label-short">Sponso</span>
-            </NavLink>
-          )}
+          {isMember && <NavLink to="/wiki">Wiki</NavLink>}
+          <NavLink to="/profile">Mon profil</NavLink>
+          {canSponsoring && <NavLink to="/sponsoring">Sponsoring</NavLink>}
           {isBureau && (
             <NavLink to="/gestion">
               Gestion
@@ -95,6 +106,11 @@ function PublicOnlyRoute({ token, children }) {
 // Pages réservées au bureau (l'API vérifie aussi les droits)
 function BureauRoute({ session, children }) {
   return session?.user.isBureau ? children : <Navigate to="/annuaire" replace />;
+}
+
+// Wiki : tous les membres validés (pas les prospects)
+function MemberRoute({ session, children }) {
+  return session?.permissions.canViewDirectory ? children : <Navigate to="/annuaire" replace />;
 }
 
 // Sponsoring : bureau ou membres tagués « Sponsoring » (droit calculé par l'API)
@@ -174,6 +190,14 @@ export default function App() {
           <Route path="/member/:id" element={privateEl(<MemberDetail />)} />
           <Route path="/profile" element={privateEl(<Profile />)} />
           <Route path="/connexion" element={privateEl(<Connexion onSessionChange={refreshSession} />)} />
+          <Route path="/wiki" element={privateEl(<MemberRoute session={session}><Wiki /></MemberRoute>)} />
+          <Route path="/wiki/c/:slug" element={privateEl(<MemberRoute session={session}><Wiki /></MemberRoute>)} />
+          <Route path="/wiki/nouveau" element={privateEl(<MemberRoute session={session}><WikiEditor /></MemberRoute>)} />
+          <Route path="/wiki/p/:slug" element={privateEl(<MemberRoute session={session}><WikiPage /></MemberRoute>)} />
+          <Route
+            path="/wiki/p/:slug/modifier"
+            element={privateEl(<MemberRoute session={session}><WikiEditor /></MemberRoute>)}
+          />
           <Route
             path="/sponsoring"
             element={privateEl(

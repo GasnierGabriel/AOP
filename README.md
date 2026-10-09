@@ -50,6 +50,19 @@ Activer le SSO Google :
 3. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`, puis redémarrer le backend.
    Le bouton Google reste masqué tant qu'ils sont vides.
 
+### Wiki
+
+Page **Wiki** pour tous les membres validés : des pages en **Markdown** rangées par catégorie
+(Administratif, Compétition, Communication, Technique, Trésorerie au départ ; le bureau peut en
+ajouter, renommer ou supprimer une catégorie vide). Chacun peut créer et modifier les pages ; chaque
+enregistrement garde une **version** consultable et restaurable dans l'historique. Si quelqu'un a
+modifié la page pendant qu'on l'éditait, l'enregistrement est refusé au lieu d'écraser son travail.
+Suppression d'une page : son auteur ou le bureau. Recherche dans les titres et le contenu.
+
+API : `GET /api/wiki/categories`, `POST` / `PATCH` / `DELETE /api/wiki/categories/:id` (bureau),
+`GET /api/wiki/pages?categorie=&q=&tri=`, `GET` / `PUT` / `DELETE /api/wiki/pages/:slug`,
+`POST /api/wiki/pages`, `GET /api/wiki/pages/:slug/revisions[/:id]`.
+
 ### Sponsoring
 
 Page **Sponsoring**, réservée au bureau et aux membres portant le tag **« Sponsoring »** (à créer
