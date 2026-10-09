@@ -9,6 +9,8 @@ const {
   getCurrentAcademicYear,
 } = require('../auth');
 const {
+  cleanLinkedin,
+  LINKEDIN_ERROR,
   cleanPromo,
   PROMO_ERROR,
   formatUser,
@@ -318,6 +320,11 @@ router.put('/profile', async (req, res) => {
   if (req.body?.promo !== undefined && promo === undefined) {
     return res.status(400).json({ error: PROMO_ERROR() });
   }
+  // LinkedIn facultatif : chaîne vide = retirer son profil
+  const linkedin = req.body?.linkedinUrl === undefined ? undefined : cleanLinkedin(req.body.linkedinUrl);
+  if (req.body?.linkedinUrl !== undefined && linkedin === undefined) {
+    return res.status(400).json({ error: LINKEDIN_ERROR });
+  }
   for (const [field, value] of Object.entries({ bio, achievements })) {
     if (value === undefined || value === null) continue;
     if (typeof value !== 'string') {
@@ -339,11 +346,19 @@ router.put('/profile', async (req, res) => {
      RETURNING bio, achievements, updated_at`,
     [req.user.id, bio ?? null, achievements ?? null]
   );
-  if (promo !== undefined) {
-    await query('UPDATE users SET promo = $2, updated_at = NOW() WHERE id = $1', [req.user.id, promo]);
+  if (promo !== undefined || linkedin !== undefined) {
+    await query(
+      `UPDATE users SET
+         promo = CASE WHEN $2 THEN $3::int ELSE promo END,
+         linkedin_url = CASE WHEN $4 THEN $5 ELSE linkedin_url END,
+         updated_at = NOW()
+       WHERE id = $1`,
+      [req.user.id, promo !== undefined, promo ?? null, linkedin !== undefined, linkedin ?? null]
+    );
   }
 
   const profile = rows[0];
+  const linkedinUrl = linkedin === undefined ? req.user.linkedin_url : linkedin;
   res.json({
     profile: {
       bio: profile.bio || '',
@@ -351,6 +366,8 @@ router.put('/profile', async (req, res) => {
       updatedAt: profile.updated_at,
     },
     promo: promo === undefined ? req.user.promo : promo,
+    linkedinUrl: linkedinUrl || 'https://www.linkedin.com/',
+    hasLinkedin: Boolean(linkedinUrl),
   });
 });
 

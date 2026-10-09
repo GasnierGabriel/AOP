@@ -28,6 +28,12 @@ services:
       JWT_SECRET: dev_secret_key_change_in_production
       CORS_ORIGIN: http://localhost:3001
       PORT: 3000
+      # En dev, le frontend (3001) et l'API (3000) sont sur deux ports différents
+      PUBLIC_URL: http://localhost:3001
+      API_PUBLIC_URL: http://localhost:3000/api
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_WORKSPACE_DOMAIN: arece.eu
     volumes:
       - ./backend/src:/app/src
     depends_on:

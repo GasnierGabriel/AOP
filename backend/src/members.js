@@ -1,12 +1,16 @@
 // Helpers partagés pour charger rôles, compétitions et profil des membres
 const { query } = require('./db');
 
+// LinkedIn facultatif : sans profil renseigné, le lien mène à l'accueil de LinkedIn
+const LINKEDIN_HOME = 'https://www.linkedin.com/';
+
 function formatUser(row) {
   return {
     id: row.id,
     email: row.email,
     fullName: row.full_name,
-    linkedinUrl: row.linkedin_url,
+    linkedinUrl: row.linkedin_url || LINKEDIN_HOME,
+    hasLinkedin: Boolean(row.linkedin_url),
     status: row.status,
     isBureau: row.is_bureau,
     level: row.level,
@@ -129,7 +133,20 @@ async function getFullMember(userRow) {
   };
 }
 
+// LinkedIn : chaîne vide ou null = aucun profil ; undefined = invalide
+const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
+function cleanLinkedin(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') return undefined;
+  const url = value.trim();
+  if (!url) return null;
+  return url.length <= 500 && LINKEDIN_RE.test(url) ? url : undefined;
+}
+const LINKEDIN_ERROR = 'URL LinkedIn invalide (ex : https://www.linkedin.com/in/ton-profil)';
+
 module.exports = {
+  cleanLinkedin,
+  LINKEDIN_ERROR,
   cleanPromo,
   PROMO_ERROR,
   formatUser,

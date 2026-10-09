@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api, { errorMessage } from '../api';
+import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import PromoSelect from '../components/PromoSelect';
 
 const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
+const BLOCKED_LIST = BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' ni ');
 
 export default function Signup({ onAuth }) {
   const navigate = useNavigate();
@@ -30,7 +31,11 @@ export default function Signup({ onAuth }) {
     if (form.password !== form.confirmPassword) {
       return setError('Les mots de passe ne correspondent pas');
     }
-    if (!LINKEDIN_RE.test(form.linkedinUrl.trim())) {
+    if (isBlockedEmail(form.email)) {
+      return setError(`Utilise ton mail perso : pas d'adresse ${BLOCKED_LIST}.`);
+    }
+    // LinkedIn facultatif, vérifié seulement s'il est renseigné
+    if (form.linkedinUrl.trim() && !LINKEDIN_RE.test(form.linkedinUrl.trim())) {
       return setError('URL LinkedIn invalide (ex : https://www.linkedin.com/in/ton-profil)');
     }
 
@@ -61,18 +66,29 @@ export default function Signup({ onAuth }) {
           <input name="full_name" value={form.full_name} onChange={handleChange} required autoComplete="name" />
         </label>
         <label>
-          Email
-          <input type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="email" />
+          Mail perso
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            placeholder="prenom.nom@gmail.com"
+            required
+            autoComplete="email"
+            aria-describedby="email-help"
+          />
+          <span id="email-help" className={`field-help ${isBlockedEmail(form.email) ? 'field-help-error' : ''}`}>
+            Pas d'adresse {BLOCKED_LIST} : ton compte Google ARECE pourra être lié ensuite pour te connecter en un clic.
+          </span>
         </label>
         <label>
-          Profil LinkedIn
+          Profil LinkedIn (facultatif)
           <input
             type="url"
             name="linkedinUrl"
             value={form.linkedinUrl}
             onChange={handleChange}
             placeholder="https://www.linkedin.com/in/ton-profil"
-            required
           />
         </label>
         <label>

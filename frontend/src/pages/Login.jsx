@@ -1,12 +1,22 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api, { errorMessage } from '../api';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
+import { GOOGLE_MESSAGES, GoogleIcon, googleLoginUrl, loadAuthConfig } from '../googleSso';
 
 export default function Login({ onAuth }) {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [google, setGoogle] = useState({ enabled: false, domain: 'arece.eu' });
+
+  useEffect(() => {
+    loadAuthConfig().then((config) => setGoogle(config.google));
+  }, []);
+
+  const googleMessage = GOOGLE_MESSAGES[params.get('google')];
+  const blocked = isBlockedEmail(form.email);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -28,17 +38,38 @@ export default function Login({ onAuth }) {
     <div className="card auth-card">
       <h1>Connexion</h1>
       <p className="muted">Annuaire des membres ARECE</p>
+
+      {googleMessage && <div className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
+
+      {google.enabled && (
+        <>
+          <a className="btn btn-google" href={googleLoginUrl()}>
+            <GoogleIcon />
+            Se connecter avec Google (@{google.domain})
+          </a>
+          <div className="auth-separator">
+            <span>ou avec ton mail perso</span>
+          </div>
+        </>
+      )}
+
       <form onSubmit={handleSubmit} className="form">
         <label>
-          Email
+          Mail perso
           <input type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="email" />
+          {blocked && (
+            <span className="field-help field-help-error">
+              Les adresses {BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' et ')} ne servent pas d'identifiant :
+              utilise ton mail perso{google.enabled ? ', ou le bouton Google ci-dessus' : ''}.
+            </span>
+          )}
         </label>
         <label>
           Mot de passe
           <input type="password" name="password" value={form.password} onChange={handleChange} required autoComplete="current-password" />
         </label>
         {error && <div className="alert alert-error">{error}</div>}
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
+        <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
           {submitting ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>

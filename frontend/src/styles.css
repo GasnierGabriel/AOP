@@ -1241,6 +1241,56 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   .access-state { grid-column: 1 / -1; margin-top: -4px; }
 }
 
+/* Connexion : SSO Google, aides de saisie, page « Informations de connexion » */
+.btn-google {
+  width: 100%;
+  gap: 10px;
+  border-color: var(--border);
+  background: var(--white);
+  color: var(--navy);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.92rem;
+}
+.btn-google:hover:not(:disabled) { border-color: var(--navy); text-decoration: none; transform: translateY(-1px); }
+.google-icon { width: 18px; height: 18px; flex-shrink: 0; }
+.auth-card .btn-google { margin-top: 20px; }
+.auth-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 -4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.auth-separator::before,
+.auth-separator::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.auth-alert { margin-top: 16px; }
+.field-help {
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--muted);
+}
+.field-help-error { color: var(--error); }
+.navbar-name { color: var(--white); }
+.navbar-name:hover { color: var(--white); }
+.section-alert { margin-bottom: 14px; }
+.google-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.google-status p { flex: 1; min-width: 220px; margin: 0; }
+.google-status .btn-google { width: auto; }
+.google-status > .google-icon { width: 28px; height: 28px; }
+.google-status-text { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
+.current-value { display: flex; flex-direction: column; margin: 0; word-break: break-all; }
+.connexion-form { margin-top: 16px; }
+.connexion .back { align-self: flex-start; }
+
 /* Focus clavier visible partout */
 .btn:focus-visible,
 .filter:focus-visible,

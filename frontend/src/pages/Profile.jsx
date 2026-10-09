@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import CompetitionsEditor from '../components/CompetitionsEditor';
 import PromoSelect from '../components/PromoSelect';
@@ -15,7 +16,7 @@ const ASK_ARECE_LABELS = {
 
 export default function Profile() {
   const [me, setMe] = useState(null);
-  const [form, setForm] = useState({ bio: '', achievements: '', promo: null });
+  const [form, setForm] = useState({ bio: '', achievements: '', promo: null, linkedinUrl: '' });
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -26,7 +27,12 @@ export default function Profile() {
       .get('/auth/me')
       .then(({ data }) => {
         setMe(data);
-        setForm({ bio: data.user.profile.bio, achievements: data.user.profile.achievements, promo: data.user.promo });
+        setForm({
+          bio: data.user.profile.bio,
+          achievements: data.user.profile.achievements,
+          promo: data.user.promo,
+          linkedinUrl: data.user.hasLinkedin ? data.user.linkedinUrl : '',
+        });
       })
       .catch((err) => setLoadError(errorMessage(err, 'Impossible de charger ton profil')));
   }, []);
@@ -43,8 +49,16 @@ export default function Profile() {
     setSuccess(false);
     try {
       const { data } = await api.put('/annuaire/profile', form);
-      setForm({ bio: data.profile.bio, achievements: data.profile.achievements, promo: data.promo });
-      setMe((prev) => ({ ...prev, user: { ...prev.user, promo: data.promo } }));
+      setForm({
+        bio: data.profile.bio,
+        achievements: data.profile.achievements,
+        promo: data.promo,
+        linkedinUrl: data.hasLinkedin ? data.linkedinUrl : '',
+      });
+      setMe((prev) => ({
+        ...prev,
+        user: { ...prev.user, promo: data.promo, linkedinUrl: data.linkedinUrl, hasLinkedin: data.hasLinkedin },
+      }));
       setSuccess(true);
     } catch (err) {
       setSaveError(errorMessage(err, "Échec de l'enregistrement"));
@@ -66,6 +80,12 @@ export default function Profile() {
           ⏳ Ton compte est en attente de validation par le bureau. Tu pourras accéder à l'annuaire une fois validé.
         </div>
       )}
+      {user.emailNeedsUpdate && (
+        <div className="alert alert-info">
+          Ton compte utilise une adresse ARECE / ECE comme identifiant : renseigne ton mail perso dans{' '}
+          <Link to="/connexion">Informations de connexion</Link>, sinon tu ne pourras plus te reconnecter.
+        </div>
+      )}
 
       <div className="card detail-header">
         <div className="avatar avatar-lg">{initials(user.fullName)}</div>
@@ -76,6 +96,9 @@ export default function Profile() {
           <p className="muted">
             {user.email}
             {user.promo && <> · Promo {user.promo}</>}
+          </p>
+          <p className="small">
+            <Link to="/connexion">Informations de connexion →</Link>
           </p>
           {/* Le niveau d'accès n'est visible que par le bureau (l'API ne l'envoie qu'à lui) */}
           {user.isBureau && (
@@ -117,6 +140,16 @@ export default function Profile() {
               setForm({ ...form, promo });
             }}
             className="promo-select"
+          />
+        </label>
+        <label>
+          Profil LinkedIn (facultatif)
+          <input
+            type="url"
+            name="linkedinUrl"
+            value={form.linkedinUrl}
+            onChange={handleChange}
+            placeholder="https://www.linkedin.com/in/ton-profil"
           />
         </label>
         <label>
