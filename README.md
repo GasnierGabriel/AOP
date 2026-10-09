@@ -70,6 +70,9 @@ et attribuer depuis la fiche d'un membre). Suivi des partenaires : statut dans l
 (à contacter → contacté → en négociation → signé / refusé), type d'apport (argent, matériel,
 service, mixte) et montant ou valeur estimée, contact, membre responsable, prochaine relance
 (en rouge si dépassée) et notes. Totaux signés / en négociation et relances en retard en tête de page.
+Un partenaire **signé doit avoir un rang** : Bronze, Argent, Or, Platine au départ ; l'équipe peut
+en créer d'autres (bouton « Rangs », ou « + Nouveau rang… » dans la fiche), les renommer, changer
+leur couleur ou supprimer un rang non attribué.
 
 API : `GET /api/sponsoring/sponsors`, `POST /api/sponsoring/sponsors`,
 `PATCH` / `DELETE /api/sponsoring/sponsors/:id`, `GET /api/sponsoring/team` (responsables possibles).

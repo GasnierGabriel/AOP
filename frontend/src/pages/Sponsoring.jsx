@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import SponsorDialog from '../components/SponsorDialog';
+import TagPill from '../components/TagPill';
+import TiersDialog from '../components/TiersDialog';
 import {
   CONTRIBUTION_LABEL,
   SPONSOR_STATUSES,
@@ -17,6 +19,7 @@ const byName = (a, b) => collator.compare(a.name, b.name);
 const COLUMNS = [
   { key: 'name', label: 'Partenaire' },
   { key: 'status', label: 'Statut' },
+  { key: 'tier', label: 'Rang', defaultDir: 'desc' }, // rang le plus élevé d'abord
   { key: 'amount', label: 'Apport', defaultDir: 'desc' },
   { key: 'owner', label: 'Responsable' },
   { key: 'followUp', label: 'Relance' },
@@ -24,6 +27,7 @@ const COLUMNS = [
 
 // Valeurs triées pouvant manquer (toujours en fin de liste)
 const OPTIONAL_VALUES = {
+  tier: (s) => s.tier?.position ?? null,
   amount: (s) => s.amount,
   owner: (s) => s.owner?.fullName ?? null,
   followUp: (s) => s.nextActionDate || null,
@@ -49,16 +53,19 @@ const sum = (list) => list.reduce((total, s) => total + (s.amount || 0), 0);
 export default function Sponsoring({ session }) {
   const [sponsors, setSponsors] = useState([]);
   const [team, setTeam] = useState([]);
+  const [tiers, setTiers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rowError, setRowError] = useState('');
-  const [dialog, setDialog] = useState(null); // null | {} (nouveau) | partenaire
+  const [dialog, setDialog] = useState(null); // null | {} (nouveau) | partenaire (+ presetStatus)
+  const [tiersOpen, setTiersOpen] = useState(false);
 
   // Filtres et tri dans l'URL, comme l'annuaire
   const [params, setParams] = useSearchParams();
   const search = params.get('q') || '';
   const statusFilter = params.get('statut') || 'all';
   const ownerFilter = params.get('resp') || '';
+  const tierFilter = params.get('rang') || '';
   const sortKey = params.get('tri') || 'name';
   const sortDir = params.get('ordre') || 'asc';
   const updateParams = (changes) => {
@@ -70,14 +77,18 @@ export default function Sponsoring({ session }) {
     setParams(next, { replace: true });
   };
 
-  useEffect(() => {
-    Promise.all([api.get('/sponsoring/sponsors'), api.get('/sponsoring/team')])
-      .then(([s, t]) => {
+  const loadAll = () =>
+    Promise.all([api.get('/sponsoring/sponsors'), api.get('/sponsoring/team'), api.get('/sponsoring/tiers')])
+      .then(([s, t, r]) => {
         setSponsors(s.data.sponsors);
         setTeam(t.data.team);
+        setTiers(r.data.tiers);
       })
       .catch((err) => setError(errorMessage(err, 'Impossible de charger les partenaires')))
       .finally(() => setLoading(false));
+
+  useEffect(() => {
+    loadAll();
   }, []);
 
   const myId = session?.user.id;
@@ -92,8 +103,15 @@ export default function Sponsoring({ session }) {
       signed: sum(sponsors.filter((s) => s.status === 'signed')),
       negotiation: sum(sponsors.filter((s) => s.status === 'negotiation')),
       overdue: sponsors.filter((s) => followUpState(s) === 'overdue').length,
+      // Répartition des signés par rang, du plus élevé au plus bas : « 2 Or · 1 Bronze »
+      signedByTier: tiers
+        .map((t) => ({ name: t.name, position: t.position, n: sponsors.filter((s) => s.status === 'signed' && s.tier?.id === t.id).length }))
+        .filter((t) => t.n > 0)
+        .sort((a, b) => b.position - a.position)
+        .map((t) => `${t.n} ${t.name}`)
+        .join(' · '),
     }),
-    [sponsors]
+    [sponsors, tiers]
   );
 
   const visible = useMemo(() => {
@@ -101,6 +119,7 @@ export default function Sponsoring({ session }) {
     const filtered = sponsors.filter(
       (s) =>
         (statusFilter === 'all' || s.status === statusFilter) &&
+        (!tierFilter || (tierFilter === 'none' ? !s.tier : s.tier?.id === Number(tierFilter))) &&
         (!ownerFilter ||
           (ownerFilter === 'none' ? !s.owner : s.owner?.id === (ownerFilter === 'me' ? myId : Number(ownerFilter)))) &&
         (!term ||
@@ -109,14 +128,19 @@ export default function Sponsoring({ session }) {
           s.contributionDetails.toLowerCase().includes(term))
     );
     return sortSponsors(filtered, sortKey, sortDir);
-  }, [sponsors, statusFilter, ownerFilter, search, sortKey, sortDir, myId]);
+  }, [sponsors, statusFilter, tierFilter, ownerFilter, search, sortKey, sortDir, myId]);
 
-  const hasFilters = Boolean(search || statusFilter !== 'all' || ownerFilter);
+  const hasFilters = Boolean(search || statusFilter !== 'all' || ownerFilter || tierFilter);
 
   const replaceSponsor = (sponsor) => setSponsors((list) => list.map((s) => (s.id === sponsor.id ? sponsor : s)));
 
   const changeStatus = async (sponsor, status) => {
     setRowError('');
+    // Signé sans rang : on ouvre la fiche pour le choisir (obligatoire)
+    if (status === 'signed' && !sponsor.tier) {
+      setDialog({ ...sponsor, presetStatus: 'signed' });
+      return;
+    }
     try {
       const { data } = await api.patch(`/sponsoring/sponsors/${sponsor.id}`, { status });
       replaceSponsor(data.sponsor);
@@ -134,6 +158,12 @@ export default function Sponsoring({ session }) {
       setSponsors((list) => [...list, data.sponsor]);
     }
     setDialog(null);
+  };
+
+  const createTier = async (values) => {
+    const { data } = await api.post('/sponsoring/tiers', values);
+    setTiers((list) => [...list, data.tier]);
+    return data.tier;
   };
 
   const deleteSponsor = async () => {
@@ -157,16 +187,24 @@ export default function Sponsoring({ session }) {
           <h1>Sponsoring</h1>
           <p className="muted">Suivi des partenaires · bureau et pôle Sponsoring</p>
         </div>
-        <button type="button" className="btn btn-light" onClick={() => setDialog({})}>
-          + Nouveau partenaire
-        </button>
+        <div className="wiki-header-actions">
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => setTiersOpen(true)}>
+            Rangs
+          </button>
+          <button type="button" className="btn btn-light" onClick={() => setDialog({})}>
+            + Nouveau partenaire
+          </button>
+        </div>
       </div>
 
       <div className="sponsor-kpis">
         <div className="kpi">
           <span className="kpi-label">Signé</span>
           <strong className="kpi-value">{formatEuro(totals.signed) || '0 €'}</strong>
-          <span className="kpi-sub">{counts.signed || 0} partenaire{(counts.signed || 0) > 1 ? 's' : ''}</span>
+          <span className="kpi-sub">
+            {counts.signed || 0} partenaire{(counts.signed || 0) > 1 ? 's' : ''}
+            {totals.signedByTier && ` · ${totals.signedByTier}`}
+          </span>
         </div>
         <div className="kpi">
           <span className="kpi-label">En négociation</span>
@@ -214,6 +252,20 @@ export default function Sponsoring({ session }) {
             </option>
           ))}
         </select>
+        <select
+          className={`filter promo-filter ${tierFilter ? 'filter-active' : ''}`}
+          value={tierFilter}
+          onChange={(e) => updateParams({ rang: e.target.value })}
+          aria-label="Filtrer par rang"
+        >
+          <option value="">Tous les rangs</option>
+          {[...tiers].sort((a, b) => b.position - a.position).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+          <option value="none">Sans rang</option>
+        </select>
       </div>
 
       <div className="results-bar">
@@ -223,7 +275,7 @@ export default function Sponsoring({ session }) {
         </span>
         <div className="results-actions">
           {hasFilters && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateParams({ q: null, statut: null, resp: null })}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateParams({ q: null, statut: null, resp: null, rang: null })}>
               Réinitialiser les filtres
             </button>
           )}
@@ -300,6 +352,18 @@ export default function Sponsoring({ session }) {
                         ))}
                       </select>
                     </td>
+                    <td className={`col-tier ${s.tier || s.status === 'signed' ? '' : 'is-empty'}`}>
+                      {s.tier ? (
+                        <TagPill tag={s.tier} />
+                      ) : s.status === 'signed' ? (
+                        // Signé avant l'ajout des rangs : à compléter
+                        <span className="tier-missing" title="Un partenaire signé doit avoir un rang">
+                          ⚠ à définir
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td className="col-amount">
                       <span className="cell-prefix">Apport : </span>
                       {s.amount !== null ? <strong>{formatEuro(s.amount)}</strong> : <span className="muted">—</span>}
@@ -332,10 +396,23 @@ export default function Sponsoring({ session }) {
         <SponsorDialog
           sponsor={dialog.id ? dialog : null}
           team={team}
+          tiers={tiers}
+          presetStatus={dialog.presetStatus}
           defaultOwnerId={team.some((m) => m.id === myId) ? myId : ''}
+          onCreateTier={createTier}
           onSave={saveSponsor}
           onDelete={deleteSponsor}
           onClose={() => setDialog(null)}
+        />
+      )}
+
+      {tiersOpen && (
+        <TiersDialog
+          tiers={tiers}
+          onClose={(changed) => {
+            setTiersOpen(false);
+            if (changed) loadAll(); // noms / couleurs mis à jour dans le tableau
+          }}
         />
       )}
     </div>

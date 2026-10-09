@@ -13,16 +13,38 @@ const fromSponsor = (s) => ({
   contactPhone: s?.contactPhone || '',
   website: s?.website || '',
   ownerId: s?.owner?.id ?? '',
+  tierId: s?.tier?.id ?? '',
   nextActionDate: s?.nextActionDate || '',
   notes: s?.notes || '',
 });
 
-// Création / modification d'un partenaire
-export default function SponsorDialog({ sponsor, team, defaultOwnerId, onSave, onDelete, onClose }) {
+const NEW_TIER = '__new';
+
+// Création / modification d'un partenaire.
+// presetStatus : statut imposé à l'ouverture (ex : passage en « Signé » depuis le tableau, rang à choisir)
+export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defaultOwnerId, onCreateTier, onSave, onDelete, onClose }) {
   const isEdit = Boolean(sponsor?.id);
-  const [form, setForm] = useState(() => ({ ...fromSponsor(sponsor), ...(isEdit ? {} : { ownerId: defaultOwnerId ?? '' }) }));
+  const [form, setForm] = useState(() => ({
+    ...fromSponsor(sponsor),
+    ...(isEdit ? {} : { ownerId: defaultOwnerId ?? '' }),
+    ...(presetStatus ? { status: presetStatus } : {}),
+  }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [newTier, setNewTier] = useState(null); // { name, color } pendant la création d'un rang
+  const signed = form.status === 'signed';
+
+  const createTier = async () => {
+    if (!newTier.name.trim()) return setError('Donne un nom au nouveau rang');
+    setError('');
+    try {
+      const tier = await onCreateTier(newTier);
+      setForm((prev) => ({ ...prev, tierId: tier.id }));
+      setNewTier(null);
+    } catch (err) {
+      setError(errorMessage(err, 'Impossible de créer le rang'));
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => e.key === 'Escape' && !busy && onClose();
@@ -51,6 +73,7 @@ export default function SponsorDialog({ sponsor, team, defaultOwnerId, onSave, o
           ...form,
           amount: form.amount === '' ? null : Number(form.amount),
           ownerId: form.ownerId === '' ? null : Number(form.ownerId),
+          tierId: form.tierId === '' ? null : Number(form.tierId),
           nextActionDate: form.nextActionDate || null,
         }),
       "Impossible d'enregistrer le partenaire"
@@ -83,6 +106,60 @@ export default function SponsorDialog({ sponsor, team, defaultOwnerId, onSave, o
                 ))}
               </select>
             </label>
+            <label className={signed && !form.tierId ? 'field-required' : undefined}>
+              {signed ? 'Rang (obligatoire une fois signé)' : 'Rang (visé)'}
+              <select
+                value={newTier ? NEW_TIER : form.tierId}
+                onChange={(e) => {
+                  if (e.target.value === NEW_TIER) setNewTier({ name: '', color: '#3498db' });
+                  else {
+                    setNewTier(null);
+                    update('tierId')(e);
+                  }
+                }}
+                required={signed}
+                autoFocus={Boolean(presetStatus)}
+              >
+                <option value="">{signed ? '— Choisir un rang —' : '— Aucun —'}</option>
+                {tiers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+                <option value={NEW_TIER}>+ Nouveau rang…</option>
+              </select>
+            </label>
+            {newTier && (
+              <div className="span-2 new-tier">
+                <input
+                  value={newTier.name}
+                  onChange={(e) => setNewTier({ ...newTier, name: e.target.value })}
+                  placeholder="Nom du rang, ex : Diamant, Partenaire technique…"
+                  maxLength={40}
+                  aria-label="Nom du nouveau rang"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      createTier();
+                    }
+                  }}
+                />
+                <input
+                  type="color"
+                  value={newTier.color}
+                  onChange={(e) => setNewTier({ ...newTier, color: e.target.value })}
+                  aria-label="Couleur du nouveau rang"
+                  title="Couleur"
+                />
+                <button type="button" className="btn btn-primary btn-sm" onClick={createTier}>
+                  Créer
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setNewTier(null)}>
+                  Annuler
+                </button>
+              </div>
+            )}
             <label>
               Responsable
               <select value={form.ownerId} onChange={update('ownerId')}>
