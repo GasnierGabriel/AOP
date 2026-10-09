@@ -1291,6 +1291,92 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .connexion-form { margin-top: 16px; }
 .connexion .back { align-self: flex-start; }
 
+/* ERP Sponsoring */
+.btn-light { background: var(--white); color: var(--navy); }
+.btn-light:hover:not(:disabled) { background: var(--light); transform: translateY(-1px); }
+.sponsor-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--white);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.kpi-alert { border-left-color: var(--red); }
+.kpi-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.kpi-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.kpi-sub { font-size: 0.78rem; color: var(--muted); }
+
+/* Couleurs du pipeline */
+.status-to_contact { --status: #8a93a6; --status-bg: #eef0f4; }
+.status-contacted { --status: #2563c9; --status-bg: #e6eefb; }
+.status-negotiation { --status: #b54708; --status-bg: #fdefe3; }
+.status-signed { --status: #1e7a3c; --status-bg: #e3f4e9; }
+.status-declined { --status: #b3121f; --status-bg: #fdecee; }
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status);
+}
+.filter-active .status-dot { box-shadow: 0 0 0 2px var(--white); }
+.status-select {
+  width: auto;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--status-bg);
+  color: var(--status);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.status-select:hover { border-color: var(--status); }
+.status-select option { color: var(--navy); background: var(--white); }
+.sponsor-name { display: flex; flex-direction: column; }
+.sponsor-table .col-amount { white-space: nowrap; }
+.follow-up { white-space: nowrap; }
+.follow-up-overdue { color: var(--red); font-weight: 600; }
+.follow-up-soon { color: var(--orange); font-weight: 600; }
+.search-sm { width: 220px; padding: 7px 10px; font-size: 0.85rem; }
+.modal-wide { max-width: 640px; }
+.form-fieldset {
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.form-fieldset legend {
+  padding: 0 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+@media (max-width: 760px) {
+  .sponsor-table .member-row td { grid-column: 1 / -1; }
+  .search-sm { width: 100%; }
+  .results-bar { flex-wrap: wrap; }
+  /* Indicateurs compacts, côte à côte */
+  .sponsor-kpis { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi { padding: 10px; }
+  .kpi-label { font-size: 0.6rem; }
+  .kpi-value { font-size: 1.05rem; }
+  .kpi-sub { display: none; }
+}
+/* 4 liens dans le menu (bureau avec Sponsoring) : on masque le logo sur les très petits écrans */
+@media (max-width: 420px) {
+  .navbar-crowded .navbar-brand { display: none; }
+}
+
 /* Focus clavier visible partout */
 .btn:focus-visible,
 .filter:focus-visible,
