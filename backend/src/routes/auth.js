@@ -23,6 +23,7 @@ const {
   getFullMember,
 } = require('../members');
 const google = require('../google');
+const { hasSponsoringAccess } = require('../sponsoring');
 
 const router = express.Router();
 
@@ -151,7 +152,10 @@ router.get('/me', authenticateToken, async (req, res) => {
   };
   // Ancien compte créé avec une adresse ARECE / ECE : il doit passer à un mail perso
   user.emailNeedsUpdate = isBlockedEmail(req.user.email);
-  const permissions = { canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect' };
+  const permissions = {
+    canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
+    canAccessSponsoring: await hasSponsoringAccess(req.user),
+  };
 
   if (req.user.is_bureau) {
     permissions.askArece = getAskAreceAccess(req.user);

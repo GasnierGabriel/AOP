@@ -46,6 +46,17 @@ Activer le SSO Google :
 3. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`, puis redémarrer le backend.
    Le bouton Google reste masqué tant qu'ils sont vides.
 
+### Sponsoring
+
+Page **Sponsoring**, réservée au bureau et aux membres portant le tag **« Sponsoring »** (à créer
+et attribuer depuis la fiche d'un membre). Suivi des partenaires : statut dans le pipeline
+(à contacter → contacté → en négociation → signé / refusé), type d'apport (argent, matériel,
+service, mixte) et montant ou valeur estimée, contact, membre responsable, prochaine relance
+(en rouge si dépassée) et notes. Totaux signés / en négociation et relances en retard en tête de page.
+
+API : `GET /api/sponsoring/sponsors`, `POST /api/sponsoring/sponsors`,
+`PATCH` / `DELETE /api/sponsoring/sponsors/:id`, `GET /api/sponsoring/team` (responsables possibles).
+
 ### Permissions (rôles d'accès)
 
 | Rôle d'accès     | Annuaire visible                         | Ask ARECE |

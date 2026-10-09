@@ -126,6 +126,33 @@ CREATE TABLE IF NOT EXISTS user_tags (
   PRIMARY KEY (user_id, tag_id)
 );
 CREATE INDEX IF NOT EXISTS user_tags_tag_id_idx ON user_tags (tag_id);
+
+-- ERP Sponsoring : suivi des partenaires (accès : bureau ou tag « Sponsoring »)
+DO $$ BEGIN
+  CREATE TYPE sponsor_status AS ENUM ('to_contact', 'contacted', 'negotiation', 'signed', 'declined');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS sponsors (
+  id                   SERIAL PRIMARY KEY,
+  name                 VARCHAR(200) NOT NULL,
+  status               sponsor_status NOT NULL DEFAULT 'to_contact',
+  contribution_type    VARCHAR(20) NOT NULL DEFAULT 'money'
+                       CHECK (contribution_type IN ('money', 'material', 'service', 'mixed')),
+  amount               NUMERIC(10, 2) CHECK (amount IS NULL OR amount >= 0),  -- montant ou valeur estimée (€)
+  contribution_details TEXT,
+  contact_name         VARCHAR(200),
+  contact_email        VARCHAR(255),
+  contact_phone        VARCHAR(50),
+  website              VARCHAR(500),
+  owner_id             INTEGER REFERENCES users(id) ON DELETE SET NULL,  -- membre en charge
+  next_action_date     DATE,                                             -- prochaine relance
+  notes                TEXT,
+  created_by           INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS sponsors_name_lower_idx ON sponsors (LOWER(name));
 `;
 
 // Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`

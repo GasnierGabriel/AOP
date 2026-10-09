@@ -8,6 +8,7 @@ const { runMigrations } = require('./migrations/init');
 const authRoutes = require('./routes/auth');
 const googleRoutes = require('./routes/google');
 const annuaireRoutes = require('./routes/annuaire');
+const sponsoringRoutes = require('./routes/sponsoring');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
@@ -29,6 +30,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth/google', googleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/annuaire', annuaireRoutes);
+app.use('/api/sponsoring', sponsoringRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Route introuvable' });
