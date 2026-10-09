@@ -30,6 +30,22 @@ Le niveau d'accès (1/2) est une donnée interne : il n'est visible et modifiabl
 bureau (l'API ne l'envoie pas aux autres membres). Il est impossible de retirer le dernier
 membre du bureau, et un membre du bureau ne peut pas être prospect.
 
+### Connexion
+
+L'identifiant est un **mail perso** : les adresses `@arece.eu` et `@edu.ece.fr` sont refusées à
+l'inscription et à la connexion par mot de passe (liste modifiable via `BLOCKED_EMAIL_DOMAINS`).
+Depuis **Informations de connexion** (clic sur son nom, ou depuis Mon profil), chacun peut changer
+son mail perso, son mot de passe, et **lier son compte Google Workspace @arece.eu** pour se connecter
+ensuite en un clic (« Se connecter avec Google » sur la page de connexion).
+
+Activer le SSO Google :
+1. Console GCP du Workspace → API et services → Écran de consentement OAuth : type **Interne**.
+2. Identifiants → Créer un ID client OAuth → **Application Web**, URI de redirection autorisée :
+   `<PUBLIC_URL>/api/auth/google/callback`. Google exige un **nom de domaine en HTTPS**
+   (une adresse IP est refusée ; `http://localhost` est accepté pour les tests).
+3. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`, puis redémarrer le backend.
+   Le bouton Google reste masqué tant qu'ils sont vides.
+
 ### Permissions (rôles d'accès)
 
 | Rôle d'accès     | Annuaire visible                         | Ask ARECE |
@@ -50,10 +66,17 @@ les sortants en `alumni` à chaque rentrée).
 
 | Méthode | Route                         | Auth |
 |---------|-------------------------------|------|
-| POST    | `/api/auth/signup`            | —    |
-| POST    | `/api/auth/login`             | —    |
+| GET     | `/api/auth/config`            | — (SSO Google activé ?) |
+| POST    | `/api/auth/signup`            | — (mail perso ; LinkedIn et promo facultatifs) |
+| POST    | `/api/auth/login`             | — (refusé pour @arece.eu / @edu.ece.fr) |
 | GET     | `/api/auth/me`                | ✔    |
+| PUT     | `/api/auth/email` `{ email, currentPassword }` | ✔ |
+| PUT     | `/api/auth/password` `{ currentPassword, newPassword }` | ✔ (déconnecte les autres sessions) |
 | POST    | `/api/auth/logout`            | ✔    |
+| POST    | `/api/auth/google/link-ticket` | ✔ (lance la liaison Google) |
+| GET     | `/api/auth/google/start?mode=login\|link` | — (redirige vers Google) |
+| GET     | `/api/auth/google/callback`   | — (retour de Google) |
+| DELETE  | `/api/auth/google`            | ✔ (dissocier) |
 | GET     | `/api/annuaire/members`       | ✔ membre |
 | GET     | `/api/annuaire/members/:id`   | ✔ membre |
 | PUT     | `/api/annuaire/profile`       | ✔    |

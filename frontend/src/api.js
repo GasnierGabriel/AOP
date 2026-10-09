@@ -2,9 +2,14 @@ import axios from 'axios';
 
 export const TOKEN_KEY = 'arece_token';
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api',
-});
+export const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
+const api = axios.create({ baseURL: API_BASE });
+
+// Adresses refusées comme identifiant (même liste par défaut que l'API)
+export const BLOCKED_EMAIL_DOMAINS = ['arece.eu', 'edu.ece.fr'];
+export const isBlockedEmail = (email = '') =>
+  BLOCKED_EMAIL_DOMAINS.includes(email.trim().toLowerCase().split('@').pop());
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);

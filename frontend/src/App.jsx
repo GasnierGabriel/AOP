@@ -7,6 +7,8 @@ import Annuaire from './pages/Annuaire';
 import MemberDetail from './pages/MemberDetail';
 import Profile from './pages/Profile';
 import Gestion from './pages/Gestion';
+import Connexion from './pages/Connexion';
+import GoogleCallback from './pages/GoogleCallback';
 
 // Logo officiel (blanc sur fond transparent), servi par le site vitrine
 const LOGO_URL = 'https://arece.eu/images/ARECEV_FF_SVG_no_flag.png';
@@ -55,7 +57,11 @@ function Navbar({ session, onLogout }) {
           )}
         </nav>
         <div className="navbar-user">
-          {session && <span className="navbar-name">{session.user.fullName}</span>}
+          {session && (
+            <Link to="/connexion" className="navbar-name" title="Informations de connexion">
+              {session.user.fullName}
+            </Link>
+          )}
           <button type="button" className="btn btn-outline btn-sm" onClick={onLogout} aria-label="Déconnexion">
             <span className="label-long">Déconnexion</span>
             <span className="label-short" aria-hidden="true">⏻</span>
@@ -144,6 +150,8 @@ export default function App() {
             path="/login"
             element={<PublicOnlyRoute token={token}><Login onAuth={handleAuth} /></PublicOnlyRoute>}
           />
+          {/* Retour de la connexion Google (jeton dans le fragment de l'URL) */}
+          <Route path="/login/google" element={<GoogleCallback onAuth={handleAuth} />} />
           <Route
             path="/signup"
             element={<PublicOnlyRoute token={token}><Signup onAuth={handleAuth} /></PublicOnlyRoute>}
@@ -151,6 +159,7 @@ export default function App() {
           <Route path="/annuaire" element={privateEl(<Annuaire />)} />
           <Route path="/member/:id" element={privateEl(<MemberDetail />)} />
           <Route path="/profile" element={privateEl(<Profile />)} />
+          <Route path="/connexion" element={privateEl(<Connexion onSessionChange={refreshSession} />)} />
           <Route
             path="/gestion"
             element={privateEl(

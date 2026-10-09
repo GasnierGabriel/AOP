@@ -33,7 +33,12 @@ services:
       DATABASE_URL: postgresql://arece:${POSTGRES_PASSWORD}@postgres:5432/arece_db
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
       CORS_ORIGIN: ${PUBLIC_URL:-http://localhost}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
       PORT: 3000
+      # SSO Google Workspace (facultatif : désactivé tant que l'ID et le secret sont vides)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_WORKSPACE_DOMAIN: ${GOOGLE_WORKSPACE_DOMAIN:-arece.eu}
     depends_on:
       postgres:
         condition: service_healthy

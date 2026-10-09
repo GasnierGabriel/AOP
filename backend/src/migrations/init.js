@@ -20,6 +20,11 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email));
+-- Compte Google Workspace ARECE lié (SSO) : identifiant Google stable + adresse affichée
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_email VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_linked_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_idx ON users (google_sub) WHERE google_sub IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS roles (
   id          SERIAL PRIMARY KEY,
@@ -123,23 +128,29 @@ CREATE TABLE IF NOT EXISTS user_tags (
 CREATE INDEX IF NOT EXISTS user_tags_tag_id_idx ON user_tags (tag_id);
 `;
 
-async function migrate() {
+// Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`
+async function runMigrations() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query(SQL);
     await client.query('COMMIT');
-    console.log('✅ Migration terminée');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
-    await pool.end();
   }
 }
 
-migrate().catch((err) => {
-  console.error('❌ Échec de la migration', err);
-  process.exit(1);
-});
+module.exports = { runMigrations };
+
+if (require.main === module) {
+  runMigrations()
+    .then(() => console.log('✅ Migration terminée'))
+    .catch((err) => {
+      console.error('❌ Échec de la migration', err);
+      process.exitCode = 1;
+    })
+    .finally(() => pool.end());
+}

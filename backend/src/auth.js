@@ -17,7 +17,24 @@ if (process.env.NODE_ENV === 'production' && JWT_SECRET.startsWith('dev_')) {
 const USER_FIELDS = [
   'id', 'email', 'full_name', 'linkedin_url', 'status',
   'is_bureau', 'level', 'promo', 'created_at', 'updated_at',
+  'google_email', 'google_linked_at',
 ];
+
+// Adresses de l'école / de l'asso refusées comme identifiant : on demande un mail perso,
+// le compte Google Workspace ARECE se lie ensuite pour le SSO.
+const BLOCKED_EMAIL_DOMAINS = (process.env.BLOCKED_EMAIL_DOMAINS || 'arece.eu,edu.ece.fr')
+  .split(',')
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+
+function isBlockedEmail(email = '') {
+  const domain = String(email).trim().toLowerCase().split('@').pop();
+  return BLOCKED_EMAIL_DOMAINS.includes(domain);
+}
+
+const BLOCKED_EMAIL_MESSAGE = `Utilise ton mail perso : les adresses ${BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(
+  ' et '
+)} ne sont pas acceptées (ton compte Google ARECE pourra être lié ensuite pour la connexion).`;
 const userColumns = (alias) => USER_FIELDS.map((f) => (alias ? `${alias}.${f}` : f)).join(', ');
 
 async function hashPassword(password) {
@@ -162,6 +179,10 @@ function getAskAreceAccess(user) {
 }
 
 module.exports = {
+  JWT_SECRET,
+  BLOCKED_EMAIL_DOMAINS,
+  BLOCKED_EMAIL_MESSAGE,
+  isBlockedEmail,
   userColumns,
   hashPassword,
   comparePassword,
@@ -169,6 +190,7 @@ module.exports = {
   verifyToken,
   issueToken,
   revokeToken,
+  hashToken,
   authenticateToken,
   requireMember,
   requireBureau,

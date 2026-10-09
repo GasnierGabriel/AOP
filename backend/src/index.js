@@ -4,7 +4,9 @@ require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
 const { pool } = require('./db');
+const { runMigrations } = require('./migrations/init');
 const authRoutes = require('./routes/auth');
+const googleRoutes = require('./routes/google');
 const annuaireRoutes = require('./routes/annuaire');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -24,6 +26,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.use('/api/auth/google', googleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/annuaire', annuaireRoutes);
 
@@ -55,11 +58,14 @@ async function waitForDatabase(retries = 10, delayMs = 2000) {
   }
 }
 
+// Base prête et schéma à jour avant d'accepter des requêtes
 waitForDatabase()
+  .then(runMigrations)
   .then(() => {
+    console.log('✅ Schéma de base à jour');
     app.listen(PORT, () => console.log(`🚀 API ARECE sur le port ${PORT}`));
   })
   .catch((err) => {
-    console.error('❌ Impossible de se connecter à PostgreSQL', err);
+    console.error('❌ Démarrage impossible (PostgreSQL ou migration)', err);
     process.exit(1);
   });
