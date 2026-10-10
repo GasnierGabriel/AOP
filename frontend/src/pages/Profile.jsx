@@ -5,6 +5,7 @@ import CompetitionsEditor from '../components/CompetitionsEditor';
 import PromoSelect from '../components/PromoSelect';
 import RolesEditor from '../components/RolesEditor';
 import StatusBadge from '../components/StatusBadge';
+import Email from '../components/Email';
 import TagList from '../components/TagList';
 import { initials } from '../utils';
 
@@ -94,7 +95,7 @@ export default function Profile() {
           <StatusBadge status={user.status} isBureau={user.isBureau} />
           <TagList tags={user.tags} />
           <p className="muted">
-            {user.email}
+            <Email address={user.email} />
             {user.promo && <> · Promo {user.promo}</>}
           </p>
           <p className="small">

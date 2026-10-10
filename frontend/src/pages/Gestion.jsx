@@ -4,6 +4,7 @@ import api, { errorMessage } from '../api';
 import DeleteMemberDialog from '../components/DeleteMemberDialog';
 import PromoSelect from '../components/PromoSelect';
 import StatusBadge from '../components/StatusBadge';
+import Email from '../components/Email';
 import { formatDate, initials } from '../utils';
 
 const STATUS_OPTIONS = [
@@ -143,7 +144,7 @@ export default function Gestion({ session, onSessionChange }) {
                     {m.fullName}
                   </Link>
                   <span className="muted small">
-                    {m.email} · inscrit le {formatDate(m.createdAt)}
+                    <Email address={m.email} /> · inscrit le {formatDate(m.createdAt)}
                     {m.linkedinUrl && (
                       <>
                         {' · '}
