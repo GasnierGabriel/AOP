@@ -66,6 +66,7 @@ body {
   color: var(--text);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word; /* filet de sécurité : aucun mot long (email, lien) ne déborde */
 }
 
 #root {
@@ -663,12 +664,13 @@ select.filter { width: auto; padding-right: 10px; }
   flex-wrap: wrap;
   border-bottom: 3px solid var(--red);
 }
-.detail-identity { flex: 1; min-width: 220px; }
+.detail-identity { flex: 1; min-width: min(220px, 100%); }
+.email { overflow-wrap: anywhere; }
 .detail-identity h1 { font-size: clamp(1.3rem, 2.6vw, 1.75rem); }
 .detail-identity p { margin: 8px 0 0; }
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 20px;
 }
 .detail .form { margin-top: 0; }

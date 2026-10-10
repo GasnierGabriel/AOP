@@ -6,6 +6,7 @@ import CompetitionsEditor from '../components/CompetitionsEditor';
 import MemberTags from '../components/MemberTags';
 import RolesEditor from '../components/RolesEditor';
 import StatusBadge from '../components/StatusBadge';
+import Email from '../components/Email';
 import TagList from '../components/TagList';
 import { initials } from '../utils';
 
@@ -58,7 +59,7 @@ export default function MemberDetail() {
                 <TagList tags={member.tags} />
               )}
               <p className="muted">
-                <a href={`mailto:${member.email}`}>{member.email}</a>
+                <Email address={member.email} link />
                 {member.promo && <> · Promo {member.promo}</>}
               </p>
             </div>
