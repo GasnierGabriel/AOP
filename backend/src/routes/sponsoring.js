@@ -34,19 +34,28 @@ const formatCounterpart = (r) => ({
   doneAt: r.done_at,
 });
 
-// Contreparties des partenaires demandés, groupées par partenaire
-async function counterpartsBySponsor(sponsorIds) {
-  const map = new Map(sponsorIds.map((id) => [id, []]));
-  if (sponsorIds.length === 0) return map;
-  const { rows } = await query(
-    'SELECT * FROM sponsor_counterparts WHERE sponsor_id = ANY($1::int[]) ORDER BY position, id',
-    [sponsorIds]
-  );
-  for (const row of rows) map.get(row.sponsor_id)?.push(formatCounterpart(row));
-  return map;
+const formatContact = (r) => ({
+  id: r.id,
+  name: r.name || '',
+  role: r.role || '',
+  email: r.email || '',
+  phone: r.phone || '',
+});
+
+// Contacts et contreparties des partenaires demandés, groupés par partenaire
+async function childrenBySponsor(sponsorIds) {
+  const result = new Map(sponsorIds.map((id) => [id, { contacts: [], counterparts: [] }]));
+  if (sponsorIds.length === 0) return result;
+  const [contacts, counterparts] = await Promise.all([
+    query('SELECT * FROM sponsor_contacts WHERE sponsor_id = ANY($1::int[]) ORDER BY position, id', [sponsorIds]),
+    query('SELECT * FROM sponsor_counterparts WHERE sponsor_id = ANY($1::int[]) ORDER BY position, id', [sponsorIds]),
+  ]);
+  for (const row of contacts.rows) result.get(row.sponsor_id)?.contacts.push(formatContact(row));
+  for (const row of counterparts.rows) result.get(row.sponsor_id)?.counterparts.push(formatCounterpart(row));
+  return result;
 }
 
-function formatSponsor(row, counterparts = []) {
+function formatSponsor(row, { contacts = [], counterparts = [] } = {}) {
   return {
     id: row.id,
     name: row.name,
@@ -54,10 +63,7 @@ function formatSponsor(row, counterparts = []) {
     contributionType: row.contribution_type,
     amount: row.amount === null ? null : Number(row.amount),
     contributionDetails: row.contribution_details || '',
-    contactName: row.contact_name || '',
-    contactRole: row.contact_role || '',
-    contactEmail: row.contact_email || '',
-    contactPhone: row.contact_phone || '',
+    contacts, // le premier est le contact principal
     website: row.website || '',
     owner: row.owner_id ? { id: row.owner_id, fullName: row.owner_name } : null,
     ownerExternal: row.owner_external || '', // responsable hors équipe, saisi à la main
@@ -129,9 +135,6 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
 
   const texts = [
     ['contributionDetails', 'contribution_details', 1000, "Détail de l'apport trop long (1000 caractères max)"],
-    ['contactName', 'contact_name', 200, 'Nom du contact trop long'],
-    ['contactRole', 'contact_role', 200, 'Fonction du contact trop longue (200 caractères max)'],
-    ['contactPhone', 'contact_phone', 50, 'Téléphone trop long'],
     ['notes', 'notes', 5000, 'Notes trop longues (5000 caractères max)'],
   ];
   for (const [field, column, max, message] of texts) {
@@ -141,11 +144,6 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
     values[column] = text;
   }
 
-  if (has('contactEmail')) {
-    const email = optionalText(body.contactEmail ?? null, 255);
-    if (email === undefined || (email && !EMAIL_RE.test(email))) return fail('Email du contact invalide');
-    values.contact_email = email && email.toLowerCase();
-  }
   if (has('website')) {
     const website = optionalText(body.website ?? null, 500);
     if (website === undefined || (website && !URL_RE.test(website))) {
@@ -185,7 +183,13 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
     values.tier_id = tierId;
   }
 
-  // Contreparties : liste complète souhaitée (absente = inchangée)
+  // Contacts et contreparties : liste complète souhaitée (absente = inchangée)
+  let contacts;
+  if (body.contacts !== undefined) {
+    const parsed = parseContacts(body.contacts);
+    if (parsed.error) return fail(parsed.error);
+    contacts = parsed.items;
+  }
   let counterparts;
   if (body.counterparts !== undefined) {
     const parsed = parseCounterparts(body.counterparts);
@@ -193,7 +197,61 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
     counterparts = parsed.items;
   }
 
-  return { values, counterparts };
+  return { values, contacts, counterparts };
+}
+
+const MAX_CONTACTS = 20;
+
+function parseContacts(list) {
+  if (!Array.isArray(list)) return { error: 'Contacts invalides' };
+  if (list.length > MAX_CONTACTS) return { error: `${MAX_CONTACTS} contacts maximum par partenaire` };
+  const items = [];
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') return { error: 'Contact invalide' };
+    const name = optionalText(raw.name ?? null, 200);
+    if (name === undefined) return { error: 'Nom du contact trop long (200 caractères max)' };
+    const role = optionalText(raw.role ?? null, 200);
+    if (role === undefined) return { error: 'Fonction du contact trop longue (200 caractères max)' };
+    const email = optionalText(raw.email ?? null, 255);
+    if (email === undefined || (email && !EMAIL_RE.test(email))) {
+      return { error: `Email invalide pour le contact ${name || raw.email || ''}`.trim() };
+    }
+    const phone = optionalText(raw.phone ?? null, 50);
+    if (phone === undefined) return { error: 'Téléphone du contact trop long (50 caractères max)' };
+    if (!name && !role && !email && !phone) return { error: 'Un contact doit avoir au moins un nom, un email ou un téléphone' };
+    const id = Number.isInteger(raw.id) && raw.id > 0 ? raw.id : null;
+    items.push({ id, name, role, email: email && email.toLowerCase(), phone });
+  }
+  return { items };
+}
+
+// Remplace les contacts d'un partenaire par la liste reçue (même principe que les contreparties),
+// puis recopie le premier dans les colonnes contact_* de sponsors (miroir du contact principal)
+async function saveContacts(client, sponsorId, items) {
+  const { rows } = await client.query('SELECT id FROM sponsor_contacts WHERE sponsor_id = $1', [sponsorId]);
+  const existing = new Set(rows.map((r) => r.id));
+  const kept = items.filter((c) => c.id && existing.has(c.id)).map((c) => c.id);
+  await client.query('DELETE FROM sponsor_contacts WHERE sponsor_id = $1 AND NOT (id = ANY($2::int[]))', [sponsorId, kept]);
+  for (const [position, c] of items.entries()) {
+    const params = [c.name, c.role, c.email, c.phone, position];
+    if (c.id && existing.has(c.id)) {
+      await client.query(
+        `UPDATE sponsor_contacts SET name = $3, role = $4, email = $5, phone = $6, position = $7, updated_at = NOW()
+          WHERE id = $1 AND sponsor_id = $2`,
+        [c.id, sponsorId, ...params]
+      );
+    } else {
+      await client.query(
+        'INSERT INTO sponsor_contacts (sponsor_id, name, role, email, phone, position) VALUES ($1, $2, $3, $4, $5, $6)',
+        [sponsorId, ...params]
+      );
+    }
+  }
+  const main = items[0] || {};
+  await client.query(
+    'UPDATE sponsors SET contact_name = $2, contact_role = $3, contact_email = $4, contact_phone = $5 WHERE id = $1',
+    [sponsorId, main.name ?? null, main.role ?? null, main.email ?? null, main.phone ?? null]
+  );
 }
 
 const MAX_COUNTERPARTS = 100;
@@ -268,8 +326,8 @@ const NAME_TAKEN = { error: 'Un partenaire porte déjà ce nom' };
 async function sendSponsor(res, id, status = 200) {
   const { rows } = await query(`${SELECT_SPONSORS} WHERE s.id = $1`, [id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Partenaire introuvable' });
-  const counterparts = await counterpartsBySponsor([id]);
-  res.status(status).json({ sponsor: formatSponsor(rows[0], counterparts.get(id)) });
+  const children = await childrenBySponsor([id]);
+  res.status(status).json({ sponsor: formatSponsor(rows[0], children.get(id)) });
 }
 
 function parseId(value) {
@@ -277,11 +335,11 @@ function parseId(value) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-// GET /api/sponsoring/sponsors — tous les partenaires (avec leurs contreparties)
+// GET /api/sponsoring/sponsors — tous les partenaires (avec leurs contacts et contreparties)
 router.get('/sponsors', async (req, res) => {
   const { rows } = await query(`${SELECT_SPONSORS} ORDER BY LOWER(s.name)`);
-  const counterparts = await counterpartsBySponsor(rows.map((r) => r.id));
-  res.json({ sponsors: rows.map((r) => formatSponsor(r, counterparts.get(r.id))) });
+  const children = await childrenBySponsor(rows.map((r) => r.id));
+  res.json({ sponsors: rows.map((r) => formatSponsor(r, children.get(r.id))) });
 });
 
 // GET /api/sponsoring/team — membres pouvant être responsables
@@ -289,9 +347,9 @@ router.get('/team', async (req, res) => {
   res.json({ team: await sponsoringTeam() });
 });
 
-// POST /api/sponsoring/sponsors — nouveau partenaire (+ contreparties éventuelles)
+// POST /api/sponsoring/sponsors — nouveau partenaire (+ contacts et contreparties éventuels)
 router.post('/sponsors', async (req, res) => {
-  const { values, counterparts, error } = await parseSponsor(req.body);
+  const { values, contacts, counterparts, error } = await parseSponsor(req.body);
   if (error) return res.status(400).json({ error });
   if (values.status === 'signed' && !values.tier_id) return res.status(400).json(TIER_REQUIRED);
 
@@ -305,6 +363,7 @@ router.post('/sponsors', async (req, res) => {
          RETURNING id`,
         columns.map((c) => values[c])
       );
+      if (contacts) await saveContacts(client, rows[0].id, contacts);
       if (counterparts) await saveCounterparts(client, rows[0].id, counterparts, req.user.id);
       return rows[0].id;
     });
@@ -319,11 +378,11 @@ router.post('/sponsors', async (req, res) => {
 router.patch('/sponsors/:id', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
-  const { values, counterparts, error } = await parseSponsor(req.body, { partial: true });
+  const { values, contacts, counterparts, error } = await parseSponsor(req.body, { partial: true });
   if (error) return res.status(400).json({ error });
 
   const columns = Object.keys(values); // colonnes issues de la liste blanche de parseSponsor
-  if (columns.length === 0 && !counterparts) return res.status(400).json({ error: 'Rien à modifier' });
+  if (columns.length === 0 && !contacts && !counterparts) return res.status(400).json({ error: 'Rien à modifier' });
 
   // État final : un partenaire signé doit avoir un rang
   const { rows: current } = await query('SELECT status, tier_id FROM sponsors WHERE id = $1', [id]);
@@ -339,6 +398,7 @@ router.patch('/sponsors/:id', async (req, res) => {
           WHERE id = $1`,
         [id, ...columns.map((c) => values[c])]
       );
+      if (rowCount > 0 && contacts) await saveContacts(client, id, contacts);
       if (rowCount > 0 && counterparts) await saveCounterparts(client, id, counterparts, req.user.id);
       return rowCount > 0;
     });
