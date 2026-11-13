@@ -1,6 +1,6 @@
 // ERP Sponsoring : suivi des partenaires (bureau + membres tagués « Sponsoring »)
 const express = require('express');
-const { query } = require('../db');
+const { query, pool } = require('../db');
 const { authenticateToken } = require('../auth');
 const { SPONSORING_TAG, requireSponsoring } = require('../sponsoring');
 
@@ -25,7 +25,28 @@ const SELECT_SPONSORS = `
 
 const formatTier = (r) => ({ id: r.id, name: r.name, color: r.color, position: r.position });
 
-function formatSponsor(row) {
+const formatCounterpart = (r) => ({
+  id: r.id,
+  label: r.label,
+  details: r.details || '',
+  dueDate: r.due_date,
+  done: Boolean(r.done_at),
+  doneAt: r.done_at,
+});
+
+// Contreparties des partenaires demandés, groupées par partenaire
+async function counterpartsBySponsor(sponsorIds) {
+  const map = new Map(sponsorIds.map((id) => [id, []]));
+  if (sponsorIds.length === 0) return map;
+  const { rows } = await query(
+    'SELECT * FROM sponsor_counterparts WHERE sponsor_id = ANY($1::int[]) ORDER BY position, id',
+    [sponsorIds]
+  );
+  for (const row of rows) map.get(row.sponsor_id)?.push(formatCounterpart(row));
+  return map;
+}
+
+function formatSponsor(row, counterparts = []) {
   return {
     id: row.id,
     name: row.name,
@@ -34,15 +55,18 @@ function formatSponsor(row) {
     amount: row.amount === null ? null : Number(row.amount),
     contributionDetails: row.contribution_details || '',
     contactName: row.contact_name || '',
+    contactRole: row.contact_role || '',
     contactEmail: row.contact_email || '',
     contactPhone: row.contact_phone || '',
     website: row.website || '',
     owner: row.owner_id ? { id: row.owner_id, fullName: row.owner_name } : null,
+    ownerExternal: row.owner_external || '', // responsable hors équipe, saisi à la main
     tier: row.tier_id
       ? { id: row.tier_id, name: row.tier_name, color: row.tier_color, position: row.tier_position }
       : null,
     nextActionDate: row.next_action_date,
     notes: row.notes || '',
+    counterparts,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -71,6 +95,8 @@ function optionalText(value, max) {
   if (!text) return null;
   return text.length <= max ? text : undefined;
 }
+
+const isValidDate = (date) => typeof date === 'string' && DATE_RE.test(date) && !Number.isNaN(Date.parse(date));
 
 // Valide le corps de requête. En mode partiel (PATCH), seuls les champs présents sont pris.
 async function parseSponsor(body = {}, { partial = false } = {}) {
@@ -104,6 +130,7 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
   const texts = [
     ['contributionDetails', 'contribution_details', 1000, "Détail de l'apport trop long (1000 caractères max)"],
     ['contactName', 'contact_name', 200, 'Nom du contact trop long'],
+    ['contactRole', 'contact_role', 200, 'Fonction du contact trop longue (200 caractères max)'],
     ['contactPhone', 'contact_phone', 50, 'Téléphone trop long'],
     ['notes', 'notes', 5000, 'Notes trop longues (5000 caractères max)'],
   ];
@@ -128,18 +155,25 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
   }
   if (has('nextActionDate')) {
     const date = body.nextActionDate || null;
-    if (date !== null && (typeof date !== 'string' || !DATE_RE.test(date) || Number.isNaN(Date.parse(date)))) {
-      return fail('Date de relance invalide');
-    }
+    if (date !== null && !isValidDate(date)) return fail('Date de relance invalide');
     values.next_action_date = date;
   }
-  if (has('ownerId')) {
-    const ownerId = body.ownerId === null || body.ownerId === '' || body.ownerId === undefined ? null : Number(body.ownerId);
-    if (ownerId !== null) {
-      const team = await sponsoringTeam();
-      if (!team.some((m) => m.id === ownerId)) return fail("Le responsable doit faire partie de l'équipe Sponsoring");
+  // Responsable : un membre de l'équipe (ownerId) ou, à défaut, un nom saisi à la main (ownerName)
+  if (has('ownerId') || has('ownerName')) {
+    const ownerName = optionalText(body.ownerName ?? null, 200);
+    if (ownerName === undefined) return fail('Nom du responsable trop long (200 caractères max)');
+    if (ownerName) {
+      values.owner_id = null;
+      values.owner_external = ownerName;
+    } else {
+      const ownerId = body.ownerId === null || body.ownerId === '' || body.ownerId === undefined ? null : Number(body.ownerId);
+      if (ownerId !== null) {
+        const team = await sponsoringTeam();
+        if (!team.some((m) => m.id === ownerId)) return fail("Le responsable doit faire partie de l'équipe Sponsoring");
+      }
+      values.owner_id = ownerId;
+      values.owner_external = null;
     }
-    values.owner_id = ownerId;
   }
   if (has('tierId')) {
     const tierId = body.tierId === null || body.tierId === '' || body.tierId === undefined ? null : Number(body.tierId);
@@ -151,7 +185,82 @@ async function parseSponsor(body = {}, { partial = false } = {}) {
     values.tier_id = tierId;
   }
 
-  return { values };
+  // Contreparties : liste complète souhaitée (absente = inchangée)
+  let counterparts;
+  if (body.counterparts !== undefined) {
+    const parsed = parseCounterparts(body.counterparts);
+    if (parsed.error) return fail(parsed.error);
+    counterparts = parsed.items;
+  }
+
+  return { values, counterparts };
+}
+
+const MAX_COUNTERPARTS = 100;
+
+function parseCounterparts(list) {
+  if (!Array.isArray(list)) return { error: 'Contreparties invalides' };
+  if (list.length > MAX_COUNTERPARTS) return { error: `${MAX_COUNTERPARTS} contreparties maximum par partenaire` };
+  const items = [];
+  for (const raw of list) {
+    if (!raw || typeof raw !== 'object') return { error: 'Contrepartie invalide' };
+    const label = typeof raw.label === 'string' ? raw.label.trim().replace(/\s+/g, ' ') : '';
+    if (!label) return { error: 'Chaque contrepartie doit avoir un intitulé' };
+    if (label.length > 300) return { error: 'Intitulé de contrepartie trop long (300 caractères max)' };
+    const details = optionalText(raw.details ?? null, 1000);
+    if (details === undefined) return { error: 'Précisions de contrepartie trop longues (1000 caractères max)' };
+    const dueDate = raw.dueDate || null;
+    if (dueDate !== null && !isValidDate(dueDate)) return { error: `Date invalide pour « ${label} »` };
+    const id = Number.isInteger(raw.id) && raw.id > 0 ? raw.id : null;
+    items.push({ id, label, details, dueDate, done: raw.done === true });
+  }
+  return { items };
+}
+
+async function inTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Remplace les contreparties d'un partenaire par la liste reçue :
+// identifiants connus mis à jour, nouvelles lignes insérées, lignes absentes supprimées
+async function saveCounterparts(client, sponsorId, items, userId) {
+  const { rows } = await client.query('SELECT id FROM sponsor_counterparts WHERE sponsor_id = $1', [sponsorId]);
+  const existing = new Set(rows.map((r) => r.id));
+  const kept = items.filter((c) => c.id && existing.has(c.id)).map((c) => c.id);
+  await client.query('DELETE FROM sponsor_counterparts WHERE sponsor_id = $1 AND NOT (id = ANY($2::int[]))', [
+    sponsorId,
+    kept,
+  ]);
+  for (const [position, c] of items.entries()) {
+    if (c.id && existing.has(c.id)) {
+      // La date de réalisation est conservée tant que la case reste cochée
+      await client.query(
+        `UPDATE sponsor_counterparts
+            SET label = $3, details = $4, due_date = $5, position = $6,
+                done_at = CASE WHEN $7::boolean THEN COALESCE(done_at, NOW()) ELSE NULL END,
+                updated_at = NOW()
+          WHERE id = $1 AND sponsor_id = $2`,
+        [c.id, sponsorId, c.label, c.details, c.dueDate, position, c.done]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO sponsor_counterparts (sponsor_id, label, details, due_date, position, done_at, created_by)
+         VALUES ($1, $2, $3, $4, $5, CASE WHEN $6::boolean THEN NOW() END, $7)`,
+        [sponsorId, c.label, c.details, c.dueDate, position, c.done, userId]
+      );
+    }
+  }
 }
 
 const NAME_TAKEN = { error: 'Un partenaire porte déjà ce nom' };
@@ -159,7 +268,8 @@ const NAME_TAKEN = { error: 'Un partenaire porte déjà ce nom' };
 async function sendSponsor(res, id, status = 200) {
   const { rows } = await query(`${SELECT_SPONSORS} WHERE s.id = $1`, [id]);
   if (rows.length === 0) return res.status(404).json({ error: 'Partenaire introuvable' });
-  res.status(status).json({ sponsor: formatSponsor(rows[0]) });
+  const counterparts = await counterpartsBySponsor([id]);
+  res.status(status).json({ sponsor: formatSponsor(rows[0], counterparts.get(id)) });
 }
 
 function parseId(value) {
@@ -167,10 +277,11 @@ function parseId(value) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-// GET /api/sponsoring/sponsors — tous les partenaires
+// GET /api/sponsoring/sponsors — tous les partenaires (avec leurs contreparties)
 router.get('/sponsors', async (req, res) => {
   const { rows } = await query(`${SELECT_SPONSORS} ORDER BY LOWER(s.name)`);
-  res.json({ sponsors: rows.map(formatSponsor) });
+  const counterparts = await counterpartsBySponsor(rows.map((r) => r.id));
+  res.json({ sponsors: rows.map((r) => formatSponsor(r, counterparts.get(r.id))) });
 });
 
 // GET /api/sponsoring/team — membres pouvant être responsables
@@ -178,22 +289,26 @@ router.get('/team', async (req, res) => {
   res.json({ team: await sponsoringTeam() });
 });
 
-// POST /api/sponsoring/sponsors — nouveau partenaire
+// POST /api/sponsoring/sponsors — nouveau partenaire (+ contreparties éventuelles)
 router.post('/sponsors', async (req, res) => {
-  const { values, error } = await parseSponsor(req.body);
+  const { values, counterparts, error } = await parseSponsor(req.body);
   if (error) return res.status(400).json({ error });
   if (values.status === 'signed' && !values.tier_id) return res.status(400).json(TIER_REQUIRED);
 
   values.created_by = req.user.id;
   const columns = Object.keys(values);
   try {
-    const { rows } = await query(
-      `INSERT INTO sponsors (${columns.join(', ')})
-       VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})
-       RETURNING id`,
-      columns.map((c) => values[c])
-    );
-    await sendSponsor(res, rows[0].id, 201);
+    const id = await inTransaction(async (client) => {
+      const { rows } = await client.query(
+        `INSERT INTO sponsors (${columns.join(', ')})
+         VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})
+         RETURNING id`,
+        columns.map((c) => values[c])
+      );
+      if (counterparts) await saveCounterparts(client, rows[0].id, counterparts, req.user.id);
+      return rows[0].id;
+    });
+    await sendSponsor(res, id, 201);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json(NAME_TAKEN);
     throw err;
@@ -204,11 +319,11 @@ router.post('/sponsors', async (req, res) => {
 router.patch('/sponsors/:id', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Identifiant invalide' });
-  const { values, error } = await parseSponsor(req.body, { partial: true });
+  const { values, counterparts, error } = await parseSponsor(req.body, { partial: true });
   if (error) return res.status(400).json({ error });
 
   const columns = Object.keys(values); // colonnes issues de la liste blanche de parseSponsor
-  if (columns.length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+  if (columns.length === 0 && !counterparts) return res.status(400).json({ error: 'Rien à modifier' });
 
   // État final : un partenaire signé doit avoir un rang
   const { rows: current } = await query('SELECT status, tier_id FROM sponsors WHERE id = $1', [id]);
@@ -218,12 +333,16 @@ router.patch('/sponsors/:id', async (req, res) => {
   if (finalStatus === 'signed' && !finalTier) return res.status(400).json(TIER_REQUIRED);
 
   try {
-    const { rowCount } = await query(
-      `UPDATE sponsors SET ${columns.map((c, i) => `${c} = $${i + 2}`).join(', ')}, updated_at = NOW()
-        WHERE id = $1`,
-      [id, ...columns.map((c) => values[c])]
-    );
-    if (rowCount === 0) return res.status(404).json({ error: 'Partenaire introuvable' });
+    const found = await inTransaction(async (client) => {
+      const { rowCount } = await client.query(
+        `UPDATE sponsors SET ${columns.map((c, i) => `${c} = $${i + 2}, `).join('')}updated_at = NOW()
+          WHERE id = $1`,
+        [id, ...columns.map((c) => values[c])]
+      );
+      if (rowCount > 0 && counterparts) await saveCounterparts(client, id, counterparts, req.user.id);
+      return rowCount > 0;
+    });
+    if (!found) return res.status(404).json({ error: 'Partenaire introuvable' });
     await sendSponsor(res, id);
   } catch (err) {
     if (err.code === '23505') return res.status(409).json(NAME_TAKEN);

@@ -34,6 +34,7 @@ function Navbar({ session, onLogout }) {
   const isMember = session?.permissions.canViewDirectory;
   const canSponsoring = session?.permissions.canAccessSponsoring;
   const pending = session?.permissions.pendingProspects || 0;
+  const urgentCounterparts = (canSponsoring && session?.permissions.urgentCounterparts) || 0;
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
@@ -52,7 +53,7 @@ function Navbar({ session, onLogout }) {
           aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         >
           <span aria-hidden="true">{menuOpen ? '✕' : '☰'}</span>
-          {pending > 0 && !menuOpen && <span className="menu-toggle-dot" aria-hidden="true" />}
+          {pending + urgentCounterparts > 0 && !menuOpen && <span className="menu-toggle-dot" aria-hidden="true" />}
         </button>
         <nav id="main-nav" className="navbar-links">
           {/* Les fiches membres font partie de l'annuaire */}
@@ -64,7 +65,16 @@ function Navbar({ session, onLogout }) {
           </NavLink>
           {isMember && <NavLink to="/wiki">Wiki</NavLink>}
           <NavLink to="/profile">Mon profil</NavLink>
-          {canSponsoring && <NavLink to="/sponsoring">Sponsoring</NavLink>}
+          {canSponsoring && (
+            <NavLink to="/sponsoring">
+              Sponsoring
+              {urgentCounterparts > 0 && (
+                <span className="nav-badge" title={`${urgentCounterparts} contrepartie(s) en retard ou à échéance sous 7 jours`}>
+                  {urgentCounterparts}
+                </span>
+              )}
+            </NavLink>
+          )}
           {isBureau && (
             <NavLink to="/gestion">
               Gestion
@@ -202,7 +212,7 @@ export default function App() {
             path="/sponsoring"
             element={privateEl(
               <SponsoringRoute session={session}>
-                <Sponsoring session={session} />
+                <Sponsoring session={session} onSessionChange={refreshSession} />
               </SponsoringRoute>
             )}
           />

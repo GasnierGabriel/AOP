@@ -8,8 +8,10 @@ import {
   CONTRIBUTION_LABEL,
   SPONSOR_STATUSES,
   STATUS_ORDER,
+  counterpartSummary,
   followUpState,
   formatEuro,
+  ownerLabel,
 } from '../sponsoringConfig';
 import { formatDate } from '../utils';
 
@@ -22,6 +24,7 @@ const COLUMNS = [
   { key: 'tier', label: 'Rang', defaultDir: 'desc' }, // rang le plus élevé d'abord
   { key: 'amount', label: 'Apport', defaultDir: 'desc' },
   { key: 'owner', label: 'Responsable' },
+  { key: 'counterparts', label: 'Contreparties' }, // prochaine échéance d'abord
   { key: 'followUp', label: 'Relance' },
 ];
 
@@ -29,7 +32,8 @@ const COLUMNS = [
 const OPTIONAL_VALUES = {
   tier: (s) => s.tier?.position ?? null,
   amount: (s) => s.amount,
-  owner: (s) => s.owner?.fullName ?? null,
+  owner: ownerLabel,
+  counterparts: (s) => counterpartSummary(s).next,
   followUp: (s) => s.nextActionDate || null,
 };
 
@@ -50,7 +54,15 @@ function sortSponsors(list, key, dir) {
 
 const sum = (list) => list.reduce((total, s) => total + (s.amount || 0), 0);
 
-export default function Sponsoring({ session }) {
+// Indicateur de la colonne Contreparties : le plus urgent d'abord
+function CounterpartCell({ summary }) {
+  if (summary.overdue) return <span className="cp-badge cp-overdue">⚠ {summary.overdue} en retard</span>;
+  if (summary.today) return <span className="cp-badge cp-today">Aujourd'hui</span>;
+  if (summary.soon) return <span className="cp-badge cp-soon">{formatDate(summary.next)}</span>;
+  return summary.next ? <span className="muted small">{formatDate(summary.next)}</span> : null;
+}
+
+export default function Sponsoring({ session, onSessionChange }) {
   const [sponsors, setSponsors] = useState([]);
   const [team, setTeam] = useState([]);
   const [tiers, setTiers] = useState([]);
@@ -66,6 +78,7 @@ export default function Sponsoring({ session }) {
   const statusFilter = params.get('statut') || 'all';
   const ownerFilter = params.get('resp') || '';
   const tierFilter = params.get('rang') || '';
+  const urgentFilter = params.get('contreparties') === 'urgent';
   const sortKey = params.get('tri') || 'name';
   const sortDir = params.get('ordre') || 'asc';
   const updateParams = (changes) => {
@@ -103,6 +116,9 @@ export default function Sponsoring({ session }) {
       signed: sum(sponsors.filter((s) => s.status === 'signed')),
       negotiation: sum(sponsors.filter((s) => s.status === 'negotiation')),
       overdue: sponsors.filter((s) => followUpState(s) === 'overdue').length,
+      // Contreparties non faites en retard, du jour ou sous 7 jours
+      counterpartsUrgent: sponsors.reduce((n, s) => n + counterpartSummary(s).urgent, 0),
+      counterpartsOverdue: sponsors.reduce((n, s) => n + counterpartSummary(s).overdue, 0),
       // Répartition des signés par rang, du plus élevé au plus bas : « 2 Or · 1 Bronze »
       signedByTier: tiers
         .map((t) => ({ name: t.name, position: t.position, n: sponsors.filter((s) => s.status === 'signed' && s.tier?.id === t.id).length }))
@@ -114,23 +130,36 @@ export default function Sponsoring({ session }) {
     [sponsors, tiers]
   );
 
+  // Responsables saisis à la main (hors équipe), proposés dans le filtre
+  const externalOwners = useMemo(
+    () => [...new Set(sponsors.map((s) => s.ownerExternal).filter(Boolean))].sort(collator.compare),
+    [sponsors]
+  );
+
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const matchesOwner = (s) => {
+      if (!ownerFilter) return true;
+      if (ownerFilter === 'none') return !ownerLabel(s);
+      if (ownerFilter.startsWith('ext:')) return s.ownerExternal === ownerFilter.slice(4);
+      return s.owner?.id === (ownerFilter === 'me' ? myId : Number(ownerFilter));
+    };
+    const matchesTerm = (s) =>
+      [s.name, s.contactName, s.contactRole, s.contributionDetails, s.ownerExternal, ...s.counterparts.map((c) => c.label)].some(
+        (text) => text && text.toLowerCase().includes(term)
+      );
     const filtered = sponsors.filter(
       (s) =>
         (statusFilter === 'all' || s.status === statusFilter) &&
         (!tierFilter || (tierFilter === 'none' ? !s.tier : s.tier?.id === Number(tierFilter))) &&
-        (!ownerFilter ||
-          (ownerFilter === 'none' ? !s.owner : s.owner?.id === (ownerFilter === 'me' ? myId : Number(ownerFilter)))) &&
-        (!term ||
-          s.name.toLowerCase().includes(term) ||
-          s.contactName.toLowerCase().includes(term) ||
-          s.contributionDetails.toLowerCase().includes(term))
+        matchesOwner(s) &&
+        (!urgentFilter || counterpartSummary(s).urgent > 0) &&
+        (!term || matchesTerm(s))
     );
     return sortSponsors(filtered, sortKey, sortDir);
-  }, [sponsors, statusFilter, tierFilter, ownerFilter, search, sortKey, sortDir, myId]);
+  }, [sponsors, statusFilter, tierFilter, ownerFilter, urgentFilter, search, sortKey, sortDir, myId]);
 
-  const hasFilters = Boolean(search || statusFilter !== 'all' || ownerFilter || tierFilter);
+  const hasFilters = Boolean(search || statusFilter !== 'all' || ownerFilter || tierFilter || urgentFilter);
 
   const replaceSponsor = (sponsor) => setSponsors((list) => list.map((s) => (s.id === sponsor.id ? sponsor : s)));
 
@@ -158,6 +187,7 @@ export default function Sponsoring({ session }) {
       setSponsors((list) => [...list, data.sponsor]);
     }
     setDialog(null);
+    onSessionChange?.(); // badge des contreparties à échéance dans le menu
   };
 
   const createTier = async (values) => {
@@ -170,6 +200,7 @@ export default function Sponsoring({ session }) {
     await api.delete(`/sponsoring/sponsors/${dialog.id}`);
     setSponsors((list) => list.filter((s) => s.id !== dialog.id));
     setDialog(null);
+    onSessionChange?.();
   };
 
   const handleSort = (column) => {
@@ -216,6 +247,23 @@ export default function Sponsoring({ session }) {
           <strong className="kpi-value">{totals.overdue}</strong>
           <span className="kpi-sub">{totals.overdue ? 'à traiter' : 'tout est à jour'}</span>
         </div>
+        <button
+          type="button"
+          className={`kpi kpi-button ${totals.counterpartsOverdue ? 'kpi-alert' : totals.counterpartsUrgent ? 'kpi-warn' : ''} ${urgentFilter ? 'is-active' : ''}`}
+          onClick={() => updateParams({ contreparties: urgentFilter ? null : 'urgent' })}
+          aria-pressed={urgentFilter}
+          title={urgentFilter ? 'Afficher tous les partenaires' : 'Afficher les partenaires concernés'}
+        >
+          <span className="kpi-label">Contreparties à échéance</span>
+          <strong className="kpi-value">{totals.counterpartsUrgent}</strong>
+          <span className="kpi-sub">
+            {totals.counterpartsOverdue
+              ? `dont ${totals.counterpartsOverdue} en retard`
+              : totals.counterpartsUrgent
+                ? 'dans les 7 jours'
+                : "rien d'urgent"}
+          </span>
+        </button>
       </div>
 
       <div className="filters">
@@ -251,6 +299,11 @@ export default function Sponsoring({ session }) {
               {m.fullName}
             </option>
           ))}
+          {externalOwners.map((name) => (
+            <option key={name} value={`ext:${name}`}>
+              {name} (hors équipe)
+            </option>
+          ))}
         </select>
         <select
           className={`filter promo-filter ${tierFilter ? 'filter-active' : ''}`}
@@ -275,7 +328,7 @@ export default function Sponsoring({ session }) {
         </span>
         <div className="results-actions">
           {hasFilters && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateParams({ q: null, statut: null, resp: null, rang: null })}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => updateParams({ q: null, statut: null, resp: null, rang: null, contreparties: null })}>
               Réinitialiser les filtres
             </button>
           )}
@@ -330,12 +383,15 @@ export default function Sponsoring({ session }) {
             <tbody>
               {visible.map((s) => {
                 const followUp = followUpState(s);
+                const counterparts = counterpartSummary(s);
                 return (
                   <tr key={s.id} className="member-row" onClick={() => setDialog(s)}>
                     <td className="col-name">
                       <div className="sponsor-name">
                         <strong>{s.name}</strong>
-                        {s.contactName && <span className="muted small">{s.contactName}</span>}
+                        {(s.contactName || s.contactRole) && (
+                          <span className="muted small">{[s.contactName, s.contactRole].filter(Boolean).join(' · ')}</span>
+                        )}
                       </div>
                     </td>
                     <td className="col-status" onClick={(e) => e.stopPropagation()}>
@@ -369,9 +425,22 @@ export default function Sponsoring({ session }) {
                       {s.amount !== null ? <strong>{formatEuro(s.amount)}</strong> : <span className="muted">—</span>}
                       <span className="muted small"> · {CONTRIBUTION_LABEL[s.contributionType]}</span>
                     </td>
-                    <td className={`col-owner ${s.owner ? '' : 'is-empty'}`}>
+                    <td className={`col-owner ${ownerLabel(s) ? '' : 'is-empty'}`}>
                       <span className="cell-prefix">Responsable : </span>
-                      {s.owner ? s.owner.fullName : <span className="muted">—</span>}
+                      {ownerLabel(s) || <span className="muted">—</span>}
+                    </td>
+                    <td className={`col-counterparts ${counterparts.total ? '' : 'is-empty'}`}>
+                      <span className="cell-prefix">Contreparties : </span>
+                      {counterparts.total ? (
+                        <span className="counterpart-cell">
+                          <span className="counterpart-progress" title="Contreparties faites / prévues">
+                            {counterparts.done}/{counterparts.total}
+                          </span>
+                          <CounterpartCell summary={counterparts} />
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                     <td className={`col-followUp ${s.nextActionDate ? '' : 'is-empty'}`}>
                       <span className="cell-prefix">Relance : </span>
