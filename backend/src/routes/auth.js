@@ -157,6 +157,16 @@ router.get('/me', authenticateToken, async (req, res) => {
     canAccessSponsoring: await hasSponsoringAccess(req.user),
   };
   if (permissions.canAccessSponsoring) permissions.urgentCounterparts = await countUrgentCounterparts();
+  if (permissions.canViewDirectory) {
+    // Mes tâches non faites, en retard ou à échéance sous 3 jours (badge « Tâches » du menu)
+    const { rows } = await query(
+      `SELECT COUNT(DISTINCT t.id)::int AS count
+         FROM tasks t JOIN task_assignees a ON a.task_id = t.id
+        WHERE a.user_id = $1 AND t.status <> 'done' AND t.due_date IS NOT NULL AND t.due_date <= CURRENT_DATE + 3`,
+      [req.user.id]
+    );
+    permissions.myUrgentTasks = rows[0].count;
+  }
 
   if (req.user.is_bureau) {
     permissions.askArece = getAskAreceAccess(req.user);
