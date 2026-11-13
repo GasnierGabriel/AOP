@@ -189,6 +189,27 @@ CREATE TABLE IF NOT EXISTS sponsor_counterparts (
 );
 CREATE INDEX IF NOT EXISTS sponsor_counterparts_sponsor_idx ON sponsor_counterparts (sponsor_id);
 
+-- Plusieurs contacts par partenaire. Les colonnes contact_* de sponsors restent le miroir du premier contact
+-- (tenu à jour par l'API) : la reprise ci-dessous ne peut donc jamais recréer un contact supprimé.
+CREATE TABLE IF NOT EXISTS sponsor_contacts (
+  id         SERIAL PRIMARY KEY,
+  sponsor_id INTEGER NOT NULL REFERENCES sponsors(id) ON DELETE CASCADE,
+  name       VARCHAR(200),
+  role       VARCHAR(200),
+  email      VARCHAR(255),
+  phone      VARCHAR(50),
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS sponsor_contacts_sponsor_idx ON sponsor_contacts (sponsor_id);
+-- Reprise du contact unique d'avant (partenaires qui n'ont encore aucun contact enregistré)
+INSERT INTO sponsor_contacts (sponsor_id, name, role, email, phone, position)
+SELECT s.id, s.contact_name, s.contact_role, s.contact_email, s.contact_phone, 0
+  FROM sponsors s
+ WHERE COALESCE(s.contact_name, s.contact_role, s.contact_email, s.contact_phone) IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sponsor_contacts c WHERE c.sponsor_id = s.id);
+
 -- Wiki de l'asso : catégories, pages (Markdown) et historique des versions
 CREATE TABLE IF NOT EXISTS wiki_categories (
   id          SERIAL PRIMARY KEY,

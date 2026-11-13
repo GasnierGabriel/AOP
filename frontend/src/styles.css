@@ -1411,6 +1411,15 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .sponsor-table .col-tier { white-space: nowrap; }
 .tier-missing { color: var(--red); font-size: 0.8rem; font-weight: 600; }
 
+/* Contacts d'un partenaire */
+.contact-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.contact-item { padding: 8px 10px 10px; border: 1px solid var(--border); border-radius: var(--radius); }
+.contact-item:first-child { border-left: 3px solid var(--blue); }
+.contact-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.contact-item-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.contact-item-head .icon-btn { margin-left: auto; }
+.contact-more { font-weight: 600; }
+
 /* Contreparties : tableau et fiche partenaire */
 .counterpart-cell { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .counterpart-progress { font-weight: 600; font-variant-numeric: tabular-nums; }

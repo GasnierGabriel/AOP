@@ -3,16 +3,17 @@ import { errorMessage } from '../api';
 import { CONTRIBUTION_TYPES, SPONSOR_STATUSES, counterpartState } from '../sponsoringConfig';
 import { formatDate } from '../utils';
 
+const EMPTY_CONTACT = { name: '', role: '', email: '', phone: '' };
+const hasContent = (c) => [c.name, c.role, c.email, c.phone].some((v) => v.trim());
+
 const fromSponsor = (s) => ({
   name: s?.name || '',
   status: s?.status || 'to_contact',
   contributionType: s?.contributionType || 'money',
   amount: s?.amount ?? '',
   contributionDetails: s?.contributionDetails || '',
-  contactName: s?.contactName || '',
-  contactRole: s?.contactRole || '',
-  contactEmail: s?.contactEmail || '',
-  contactPhone: s?.contactPhone || '',
+  // Un contact vide à remplir si le partenaire n'en a pas encore
+  contacts: s?.contacts?.length ? s.contacts.map((c) => ({ ...c, key: c.id })) : [{ ...EMPTY_CONTACT, key: 'new-0' }],
   website: s?.website || '',
   ownerId: s?.owner?.id ?? '',
   ownerOther: Boolean(s?.ownerExternal), // responsable hors équipe, saisi à la main
@@ -40,7 +41,7 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [newTier, setNewTier] = useState(null); // { name, color } pendant la création d'un rang
-  const nextKey = useRef(0); // clés des contreparties pas encore enregistrées
+  const nextKey = useRef(0); // clés des contacts et contreparties pas encore enregistrés
   const signed = form.status === 'signed';
 
   const createTier = async () => {
@@ -62,6 +63,21 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
   }, [busy, onClose]);
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const updateContact = (key, changes) =>
+    setForm((prev) => ({ ...prev, contacts: prev.contacts.map((c) => (c.key === key ? { ...c, ...changes } : c)) }));
+  const addContact = () => {
+    nextKey.current += 1;
+    const key = `new-${nextKey.current}`;
+    setForm((prev) => ({ ...prev, contacts: [...prev.contacts, { ...EMPTY_CONTACT, key }] }));
+  };
+  const removeContact = (key) => setForm((prev) => ({ ...prev, contacts: prev.contacts.filter((c) => c.key !== key) }));
+  // Le premier contact est le contact principal (affiché dans le tableau)
+  const makeMainContact = (key) =>
+    setForm((prev) => ({
+      ...prev,
+      contacts: [...prev.contacts.filter((c) => c.key === key), ...prev.contacts.filter((c) => c.key !== key)],
+    }));
 
   const updateCounterpart = (key, changes) =>
     setForm((prev) => ({
@@ -97,7 +113,7 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
     const counterparts = form.counterparts.filter((c) => c.label.trim() || c.details.trim() || c.dueDate);
     if (counterparts.some((c) => !c.label.trim())) return setError('Chaque contrepartie doit avoir un intitulé');
 
-    const { ownerOther, ownerName, ownerId, counterparts: _, ...fields } = form;
+    const { ownerOther, ownerName, ownerId, contacts: _contacts, counterparts: _, ...fields } = form;
     run(
       () =>
         onSave({
@@ -107,6 +123,14 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
           ownerName: ownerOther ? ownerName : null,
           tierId: form.tierId === '' ? null : Number(form.tierId),
           nextActionDate: form.nextActionDate || null,
+          // Contacts laissés complètement vides : ignorés
+          contacts: form.contacts.filter(hasContent).map((c) => ({
+            id: typeof c.key === 'number' ? c.key : undefined,
+            name: c.name,
+            role: c.role,
+            email: c.email,
+            phone: c.phone,
+          })),
           counterparts: counterparts.map((c) => ({
             id: typeof c.key === 'number' ? c.key : undefined,
             label: c.label,
@@ -265,30 +289,64 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
           </div>
 
           <fieldset className="form-fieldset">
-            <legend>Contact</legend>
-            <div className="form-grid">
-              <label>
-                Nom
-                <input value={form.contactName} onChange={update('contactName')} maxLength={200} placeholder="ex : Marie Durand" />
-              </label>
-              <label>
-                Fonction
-                <input
-                  value={form.contactRole}
-                  onChange={update('contactRole')}
-                  maxLength={200}
-                  placeholder="ex : Directrice marketing Europe"
-                />
-              </label>
-              <label>
-                Email
-                <input type="email" value={form.contactEmail} onChange={update('contactEmail')} maxLength={255} />
-              </label>
-              <label>
-                Téléphone
-                <input type="tel" value={form.contactPhone} onChange={update('contactPhone')} maxLength={50} />
-              </label>
-            </div>
+            <legend>Contacts</legend>
+            {form.contacts.length > 0 && (
+              <ul className="contact-list">
+                {form.contacts.map((c, i) => (
+                  <li key={c.key} className="contact-item">
+                    <div className="contact-item-head">
+                      <span className="contact-item-title">{i === 0 ? 'Contact principal' : `Contact ${i + 1}`}</span>
+                      {i > 0 && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => makeMainContact(c.key)}>
+                          Mettre en principal
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        onClick={() => removeContact(c.key)}
+                        title="Retirer ce contact"
+                        aria-label={`Retirer ${c.name || 'ce contact'}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="form-grid">
+                      <label>
+                        Nom
+                        <input
+                          value={c.name}
+                          onChange={(e) => updateContact(c.key, { name: e.target.value })}
+                          maxLength={200}
+                          placeholder="ex : Marie Durand"
+                          autoFocus={i > 0 && typeof c.key === 'string' && !hasContent(c)}
+                        />
+                      </label>
+                      <label>
+                        Fonction
+                        <input
+                          value={c.role}
+                          onChange={(e) => updateContact(c.key, { role: e.target.value })}
+                          maxLength={200}
+                          placeholder="ex : Directrice marketing Europe"
+                        />
+                      </label>
+                      <label>
+                        Email
+                        <input type="email" value={c.email} onChange={(e) => updateContact(c.key, { email: e.target.value })} maxLength={255} />
+                      </label>
+                      <label>
+                        Téléphone
+                        <input type="tel" value={c.phone} onChange={(e) => updateContact(c.key, { phone: e.target.value })} maxLength={50} />
+                      </label>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" className="btn btn-outline btn-sm" onClick={addContact}>
+              + Ajouter un contact
+            </button>
           </fieldset>
 
           <fieldset className="form-fieldset">

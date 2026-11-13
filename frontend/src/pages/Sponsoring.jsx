@@ -145,7 +145,13 @@ export default function Sponsoring({ session, onSessionChange }) {
       return s.owner?.id === (ownerFilter === 'me' ? myId : Number(ownerFilter));
     };
     const matchesTerm = (s) =>
-      [s.name, s.contactName, s.contactRole, s.contributionDetails, s.ownerExternal, ...s.counterparts.map((c) => c.label)].some(
+      [
+        s.name,
+        s.contributionDetails,
+        s.ownerExternal,
+        ...s.contacts.flatMap((c) => [c.name, c.role, c.email]),
+        ...s.counterparts.map((c) => c.label),
+      ].some(
         (text) => text && text.toLowerCase().includes(term)
       );
     const filtered = sponsors.filter(
@@ -389,8 +395,16 @@ export default function Sponsoring({ session, onSessionChange }) {
                     <td className="col-name">
                       <div className="sponsor-name">
                         <strong>{s.name}</strong>
-                        {(s.contactName || s.contactRole) && (
-                          <span className="muted small">{[s.contactName, s.contactRole].filter(Boolean).join(' · ')}</span>
+                        {s.contacts.length > 0 && (
+                          <span
+                            className="muted small"
+                            title={s.contacts.map((c) => [c.name || c.email || c.phone, c.role].filter(Boolean).join(' · ')).join('\n')}
+                          >
+                            {[s.contacts[0].name || s.contacts[0].email || s.contacts[0].phone, s.contacts[0].role]
+                              .filter(Boolean)
+                              .join(' · ')}
+                            {s.contacts.length > 1 && <span className="contact-more"> +{s.contacts.length - 1}</span>}
+                          </span>
                         )}
                       </div>
                     </td>
