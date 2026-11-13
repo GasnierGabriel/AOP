@@ -10,6 +10,7 @@ import Gestion from './pages/Gestion';
 import Connexion from './pages/Connexion';
 import GoogleCallback from './pages/GoogleCallback';
 import Sponsoring from './pages/Sponsoring';
+import Taches from './pages/Taches';
 import Wiki from './pages/Wiki';
 import WikiPage from './pages/WikiPage';
 import WikiEditor from './pages/WikiEditor';
@@ -35,6 +36,7 @@ function Navbar({ session, onLogout }) {
   const canSponsoring = session?.permissions.canAccessSponsoring;
   const pending = session?.permissions.pendingProspects || 0;
   const urgentCounterparts = (canSponsoring && session?.permissions.urgentCounterparts) || 0;
+  const myUrgentTasks = session?.permissions.myUrgentTasks || 0;
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
@@ -53,7 +55,7 @@ function Navbar({ session, onLogout }) {
           aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
         >
           <span aria-hidden="true">{menuOpen ? '✕' : '☰'}</span>
-          {pending + urgentCounterparts > 0 && !menuOpen && <span className="menu-toggle-dot" aria-hidden="true" />}
+          {pending + urgentCounterparts + myUrgentTasks > 0 && !menuOpen && <span className="menu-toggle-dot" aria-hidden="true" />}
         </button>
         <nav id="main-nav" className="navbar-links">
           {/* Les fiches membres font partie de l'annuaire */}
@@ -63,6 +65,16 @@ function Navbar({ session, onLogout }) {
           >
             Annuaire
           </NavLink>
+          {isMember && (
+            <NavLink to="/taches">
+              Tâches
+              {myUrgentTasks > 0 && (
+                <span className="nav-badge" title={`${myUrgentTasks} de tes tâches en retard ou à échéance sous 3 jours`}>
+                  {myUrgentTasks}
+                </span>
+              )}
+            </NavLink>
+          )}
           {isMember && <NavLink to="/wiki">Wiki</NavLink>}
           <NavLink to="/profile">Mon profil</NavLink>
           {canSponsoring && (
@@ -200,6 +212,14 @@ export default function App() {
           <Route path="/member/:id" element={privateEl(<MemberDetail />)} />
           <Route path="/profile" element={privateEl(<Profile />)} />
           <Route path="/connexion" element={privateEl(<Connexion onSessionChange={refreshSession} />)} />
+          <Route
+            path="/taches"
+            element={privateEl(
+              <MemberRoute session={session}>
+                <Taches session={session} onSessionChange={refreshSession} />
+              </MemberRoute>
+            )}
+          />
           <Route path="/wiki" element={privateEl(<MemberRoute session={session}><Wiki /></MemberRoute>)} />
           <Route path="/wiki/c/:slug" element={privateEl(<MemberRoute session={session}><Wiki /></MemberRoute>)} />
           <Route path="/wiki/nouveau" element={privateEl(<MemberRoute session={session}><WikiEditor /></MemberRoute>)} />

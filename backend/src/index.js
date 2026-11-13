@@ -10,6 +10,7 @@ const googleRoutes = require('./routes/google');
 const annuaireRoutes = require('./routes/annuaire');
 const sponsoringRoutes = require('./routes/sponsoring');
 const wikiRoutes = require('./routes/wiki');
+const taskRoutes = require('./routes/tasks');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/annuaire', annuaireRoutes);
 app.use('/api/sponsoring', sponsoringRoutes);
 app.use('/api/wiki', wikiRoutes);
+app.use('/api/tasks', taskRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Route introuvable' });

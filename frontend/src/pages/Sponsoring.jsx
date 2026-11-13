@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import SponsorDialog from '../components/SponsorDialog';
 import TagPill from '../components/TagPill';
-import TiersDialog from '../components/TiersDialog';
+import ColorLabelsDialog from '../components/ColorLabelsDialog';
 import {
   CONTRIBUTION_LABEL,
   SPONSOR_STATUSES,
@@ -490,8 +490,15 @@ export default function Sponsoring({ session, onSessionChange }) {
       )}
 
       {tiersOpen && (
-        <TiersDialog
-          tiers={tiers}
+        <ColorLabelsDialog
+          items={tiers}
+          endpoint="/sponsoring/tiers"
+          responseKey="tier"
+          title="Rangs de sponsoring"
+          help="Du plus bas au plus élevé. Un partenaire signé doit avoir un rang."
+          noun="rang"
+          countOf={(t) => t.sponsorCount}
+          countLabel={(n) => `${n} partenaire${n > 1 ? 's' : ''}`}
           onClose={(changed) => {
             setTiersOpen(false);
             if (changed) loadAll(); // noms / couleurs mis à jour dans le tableau

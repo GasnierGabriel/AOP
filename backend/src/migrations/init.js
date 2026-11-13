@@ -255,6 +255,65 @@ CREATE TABLE IF NOT EXISTS wiki_revisions (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS wiki_revisions_page_idx ON wiki_revisions (page_id, created_at DESC);
+
+-- Kanban des tâches de l'asso (remplace le Kanban Notion) : tous les membres validés
+CREATE TABLE IF NOT EXISTS task_poles (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(40) NOT NULL,
+  color      VARCHAR(7) NOT NULL DEFAULT '#99aab5',
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS task_poles_name_lower_idx ON task_poles (LOWER(name));
+-- Pôles de départ, créés une seule fois (le bureau peut ensuite les modifier)
+INSERT INTO task_poles (name, color, position)
+SELECT * FROM (VALUES
+  ('Bureau', '#ad1457', 1), ('Technique', '#1f8b4c', 2), ('Partenariats', '#c27c0e', 3),
+  ('Communication', '#206694', 4), ('Événementiel', '#71368a', 5), ('Compétition', '#992d22', 6),
+  ('Trésorerie', '#11806a', 7), ('RSI', '#546e7a', 8), ('Lyon', '#a84300', 9)
+) AS v(name, color, position)
+WHERE NOT EXISTS (SELECT 1 FROM task_poles);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id           SERIAL PRIMARY KEY,
+  title        VARCHAR(300) NOT NULL,
+  context      TEXT,
+  status       VARCHAR(10) NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'doing', 'done')),
+  priority     VARCHAR(10) NOT NULL DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
+  pole_id      INTEGER REFERENCES task_poles(id) ON DELETE SET NULL,
+  due_date     DATE,
+  position     DOUBLE PRECISION NOT NULL DEFAULT 0,  -- ordre dans la colonne (glisser-déposer)
+  completed_at TIMESTAMPTZ,
+  notion_id    VARCHAR(64) UNIQUE,                   -- carte d'origine, pour un import sans doublon
+  created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks (status, position);
+
+-- Responsables : un membre de l'ERP, ou un nom saisi à la main (personne sans compte)
+CREATE TABLE IF NOT EXISTS task_assignees (
+  id       SERIAL PRIMARY KEY,
+  task_id  INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id  INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name     VARCHAR(200),
+  position INTEGER NOT NULL DEFAULT 0,
+  CHECK ((user_id IS NULL) <> (name IS NULL))
+);
+CREATE INDEX IF NOT EXISTS task_assignees_task_idx ON task_assignees (task_id);
+CREATE INDEX IF NOT EXISTS task_assignees_user_idx ON task_assignees (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS task_assignees_user_unique ON task_assignees (task_id, user_id) WHERE user_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS task_comments (
+  id          SERIAL PRIMARY KEY,
+  task_id     INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  author_name VARCHAR(200),  -- auteur d'origine quand il n'a pas de compte (import Notion)
+  body        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS task_comments_task_idx ON task_comments (task_id, created_at);
 `;
 
 // Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`
