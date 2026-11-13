@@ -169,6 +169,25 @@ SELECT * FROM (VALUES ('Bronze', '#cd7f32', 1), ('Argent', '#9ea3a8', 2), ('Or',
   AS v(name, color, position)
 WHERE NOT EXISTS (SELECT 1 FROM sponsor_tiers);
 ALTER TABLE sponsors ADD COLUMN IF NOT EXISTS tier_id INTEGER REFERENCES sponsor_tiers(id) ON DELETE RESTRICT;
+-- Fonction de la personne contactée (ex : directeur marketing Europe, assistante qui fait suivre…)
+ALTER TABLE sponsors ADD COLUMN IF NOT EXISTS contact_role VARCHAR(200);
+-- Responsable hors équipe Sponsoring, saisi à la main (exclusif avec owner_id)
+ALTER TABLE sponsors ADD COLUMN IF NOT EXISTS owner_external VARCHAR(200);
+
+-- Contreparties promises au partenaire (logo, posts, invitations…), datées ou non, cochées une fois faites
+CREATE TABLE IF NOT EXISTS sponsor_counterparts (
+  id         SERIAL PRIMARY KEY,
+  sponsor_id INTEGER NOT NULL REFERENCES sponsors(id) ON DELETE CASCADE,
+  label      VARCHAR(300) NOT NULL,
+  details    TEXT,
+  due_date   DATE,
+  done_at    TIMESTAMPTZ,
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS sponsor_counterparts_sponsor_idx ON sponsor_counterparts (sponsor_id);
 
 -- Wiki de l'asso : catégories, pages (Markdown) et historique des versions
 CREATE TABLE IF NOT EXISTS wiki_categories (

@@ -1358,6 +1358,11 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   background: var(--surface-2);
 }
 .kpi-alert { border-left-color: var(--red); }
+.kpi-warn { border-left-color: var(--orange); }
+/* Indicateur cliquable : filtre les partenaires concernés */
+.kpi-button { font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.kpi-button:hover { background: rgba(255, 255, 255, 0.06); }
+.kpi-button.is-active { background: rgba(255, 255, 255, 0.1); outline: 1px solid var(--white); }
 .kpi-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .kpi-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
 .kpi-sub { font-size: 0.78rem; color: var(--muted); }
@@ -1405,6 +1410,51 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .tier-actions { margin-left: auto; display: flex; gap: 2px; }
 .sponsor-table .col-tier { white-space: nowrap; }
 .tier-missing { color: var(--red); font-size: 0.8rem; font-weight: 600; }
+
+/* Contreparties : tableau et fiche partenaire */
+.counterpart-cell { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.counterpart-progress { font-weight: 600; font-variant-numeric: tabular-nums; }
+.cp-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cp-overdue { background: var(--red); color: #fff; }
+.cp-today { background: var(--orange); color: #fff; }
+.cp-soon { background: #fdefe3; color: #b54708; }
+.cp-done { background: #e3f4e9; color: #1e7a3c; }
+.counterpart-help { margin: 0 0 10px; }
+.counterpart-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.counterpart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+}
+.counterpart-overdue { border-left-color: var(--red); background: #fdecee; }
+.counterpart-today { border-left-color: var(--orange); background: #fdf3e8; }
+.counterpart-soon { border-left-color: var(--orange); }
+.counterpart-done { border-left-color: #1e7a3c; }
+.counterpart-done .counterpart-fields input:first-child { text-decoration: line-through; color: var(--muted); }
+.counterpart-check { width: 18px; height: 18px; margin-top: 8px; cursor: pointer; }
+.counterpart-fields { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.counterpart-fields input, .counterpart-due input { padding: 6px 9px; }
+.counterpart-fields input + input { font-size: 0.85rem; }
+.counterpart-due { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.counterpart .icon-btn { margin-top: 4px; }
+@media (max-width: 560px) {
+  /* Date et badge sous les champs */
+  .counterpart { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .counterpart-due { grid-column: 2; grid-row: 2; flex-direction: row; align-items: center; flex-wrap: wrap; }
+  .counterpart .icon-btn { grid-column: 3; grid-row: 1; }
+}
 .modal-wide { max-width: 640px; }
 .form-fieldset {
   margin: 0;
@@ -1424,7 +1474,7 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   .search-sm { width: 100%; }
   .results-bar { flex-wrap: wrap; }
   /* Indicateurs compacts, côte à côte */
-  .sponsor-kpis { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sponsor-kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .kpi { padding: 10px; }
   .kpi-label { font-size: 0.6rem; }
   .kpi-value { font-size: 1.05rem; }

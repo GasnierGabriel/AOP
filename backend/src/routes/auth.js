@@ -23,7 +23,7 @@ const {
   getFullMember,
 } = require('../members');
 const google = require('../google');
-const { hasSponsoringAccess } = require('../sponsoring');
+const { hasSponsoringAccess, countUrgentCounterparts } = require('../sponsoring');
 
 const router = express.Router();
 
@@ -156,6 +156,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
     canAccessSponsoring: await hasSponsoringAccess(req.user),
   };
+  if (permissions.canAccessSponsoring) permissions.urgentCounterparts = await countUrgentCounterparts();
 
   if (req.user.is_bureau) {
     permissions.askArece = getAskAreceAccess(req.user);

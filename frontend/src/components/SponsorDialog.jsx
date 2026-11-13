@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../api';
-import { CONTRIBUTION_TYPES, SPONSOR_STATUSES } from '../sponsoringConfig';
+import { CONTRIBUTION_TYPES, SPONSOR_STATUSES, counterpartState } from '../sponsoringConfig';
+import { formatDate } from '../utils';
 
 const fromSponsor = (s) => ({
   name: s?.name || '',
@@ -9,16 +10,23 @@ const fromSponsor = (s) => ({
   amount: s?.amount ?? '',
   contributionDetails: s?.contributionDetails || '',
   contactName: s?.contactName || '',
+  contactRole: s?.contactRole || '',
   contactEmail: s?.contactEmail || '',
   contactPhone: s?.contactPhone || '',
   website: s?.website || '',
   ownerId: s?.owner?.id ?? '',
+  ownerOther: Boolean(s?.ownerExternal), // responsable hors équipe, saisi à la main
+  ownerName: s?.ownerExternal || '',
   tierId: s?.tier?.id ?? '',
   nextActionDate: s?.nextActionDate || '',
   notes: s?.notes || '',
+  counterparts: (s?.counterparts || []).map((c) => ({ ...c, key: c.id })),
 });
 
 const NEW_TIER = '__new';
+const OTHER_OWNER = '__other';
+
+const COUNTERPART_BADGE = { overdue: 'En retard', today: "Aujourd'hui", soon: 'Bientôt' };
 
 // Création / modification d'un partenaire.
 // presetStatus : statut imposé à l'ouverture (ex : passage en « Signé » depuis le tableau, rang à choisir)
@@ -32,6 +40,7 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [newTier, setNewTier] = useState(null); // { name, color } pendant la création d'un rang
+  const nextKey = useRef(0); // clés des contreparties pas encore enregistrées
   const signed = form.status === 'signed';
 
   const createTier = async () => {
@@ -54,6 +63,22 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
 
   const update = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
+  const updateCounterpart = (key, changes) =>
+    setForm((prev) => ({
+      ...prev,
+      counterparts: prev.counterparts.map((c) => (c.key === key ? { ...c, ...changes } : c)),
+    }));
+  const addCounterpart = () => {
+    nextKey.current += 1;
+    const key = `new-${nextKey.current}`;
+    setForm((prev) => ({
+      ...prev,
+      counterparts: [...prev.counterparts, { key, label: '', details: '', dueDate: '', done: false }],
+    }));
+  };
+  const removeCounterpart = (key) =>
+    setForm((prev) => ({ ...prev, counterparts: prev.counterparts.filter((c) => c.key !== key) }));
+
   const run = async (action, fallback) => {
     setBusy(true);
     setError('');
@@ -67,14 +92,28 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (form.ownerOther && !form.ownerName.trim()) return setError('Indique le nom du responsable');
+    // Lignes laissées complètement vides : ignorées
+    const counterparts = form.counterparts.filter((c) => c.label.trim() || c.details.trim() || c.dueDate);
+    if (counterparts.some((c) => !c.label.trim())) return setError('Chaque contrepartie doit avoir un intitulé');
+
+    const { ownerOther, ownerName, ownerId, counterparts: _, ...fields } = form;
     run(
       () =>
         onSave({
-          ...form,
+          ...fields,
           amount: form.amount === '' ? null : Number(form.amount),
-          ownerId: form.ownerId === '' ? null : Number(form.ownerId),
+          ownerId: ownerOther || ownerId === '' ? null : Number(ownerId),
+          ownerName: ownerOther ? ownerName : null,
           tierId: form.tierId === '' ? null : Number(form.tierId),
           nextActionDate: form.nextActionDate || null,
+          counterparts: counterparts.map((c) => ({
+            id: typeof c.key === 'number' ? c.key : undefined,
+            label: c.label,
+            details: c.details,
+            dueDate: c.dueDate || null,
+            done: c.done,
+          })),
         }),
       "Impossible d'enregistrer le partenaire"
     );
@@ -162,13 +201,21 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
             )}
             <label>
               Responsable
-              <select value={form.ownerId} onChange={update('ownerId')}>
+              <select
+                value={form.ownerOther ? OTHER_OWNER : form.ownerId}
+                onChange={(e) =>
+                  e.target.value === OTHER_OWNER
+                    ? setForm((prev) => ({ ...prev, ownerOther: true }))
+                    : setForm((prev) => ({ ...prev, ownerOther: false, ownerId: e.target.value }))
+                }
+              >
                 <option value="">— Personne —</option>
                 {team.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.fullName}
                   </option>
                 ))}
+                <option value={OTHER_OWNER}>Autre (saisir un nom)…</option>
               </select>
             </label>
             <label>
@@ -181,9 +228,26 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
                 ))}
               </select>
             </label>
+            {form.ownerOther && (
+              <label className="span-2">
+                Nom du responsable
+                <input
+                  value={form.ownerName}
+                  onChange={update('ownerName')}
+                  maxLength={200}
+                  placeholder="ex : Camille Martin (pôle Communication)"
+                  autoFocus
+                  required
+                />
+              </label>
+            )}
             <label>
               {form.contributionType === 'money' ? 'Montant (€)' : 'Valeur estimée (€)'}
               <input type="number" min={0} step="1" value={form.amount} onChange={update('amount')} placeholder="ex : 1500" />
+            </label>
+            <label>
+              Prochaine relance
+              <input type="date" value={form.nextActionDate} onChange={update('nextActionDate')} />
             </label>
             <label className="span-2">
               Détail de l'apport
@@ -194,11 +258,7 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
                 placeholder="ex : 10 licences logiciel, capteurs lidar, usinage de pièces…"
               />
             </label>
-            <label>
-              Prochaine relance
-              <input type="date" value={form.nextActionDate} onChange={update('nextActionDate')} />
-            </label>
-            <label>
+            <label className="span-2">
               Site web
               <input type="url" value={form.website} onChange={update('website')} placeholder="https://…" maxLength={500} />
             </label>
@@ -207,9 +267,18 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
           <fieldset className="form-fieldset">
             <legend>Contact</legend>
             <div className="form-grid">
-              <label className="span-2">
+              <label>
                 Nom
-                <input value={form.contactName} onChange={update('contactName')} maxLength={200} placeholder="ex : Marie Durand, responsable RSE" />
+                <input value={form.contactName} onChange={update('contactName')} maxLength={200} placeholder="ex : Marie Durand" />
+              </label>
+              <label>
+                Fonction
+                <input
+                  value={form.contactRole}
+                  onChange={update('contactRole')}
+                  maxLength={200}
+                  placeholder="ex : Directrice marketing Europe"
+                />
               </label>
               <label>
                 Email
@@ -222,6 +291,76 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
             </div>
           </fieldset>
 
+          <fieldset className="form-fieldset">
+            <legend>Contreparties</legend>
+            <p className="muted small counterpart-help">
+              Ce qui est promis au partenaire et ses exigences (logo, posts, invitations…). Une échéance dépassée ou dans
+              les 7 jours est signalée dans le tableau et dans le menu.
+            </p>
+            {form.counterparts.length > 0 && (
+              <ul className="counterpart-list">
+                {form.counterparts.map((c) => {
+                  const state = counterpartState(c);
+                  return (
+                    <li key={c.key} className={`counterpart ${state ? `counterpart-${state}` : ''}`}>
+                      <input
+                        type="checkbox"
+                        className="counterpart-check"
+                        checked={c.done}
+                        onChange={(e) => updateCounterpart(c.key, { done: e.target.checked, doneAt: null })}
+                        title="Fait"
+                        aria-label={`Fait : ${c.label || 'contrepartie'}`}
+                      />
+                      <div className="counterpart-fields">
+                        <input
+                          value={c.label}
+                          onChange={(e) => updateCounterpart(c.key, { label: e.target.value })}
+                          maxLength={300}
+                          placeholder="ex : Logo sur le capot, 2 posts LinkedIn…"
+                          aria-label="Contrepartie"
+                          autoFocus={typeof c.key === 'string' && !c.label}
+                        />
+                        <input
+                          value={c.details}
+                          onChange={(e) => updateCounterpart(c.key, { details: e.target.value })}
+                          maxLength={1000}
+                          placeholder="Exigences de la marque, précisions (facultatif)"
+                          aria-label="Précisions"
+                        />
+                      </div>
+                      <div className="counterpart-due">
+                        <input
+                          type="date"
+                          value={c.dueDate || ''}
+                          onChange={(e) => updateCounterpart(c.key, { dueDate: e.target.value })}
+                          title="Échéance (facultative)"
+                          aria-label="Échéance"
+                        />
+                        {state === 'done' ? (
+                          <span className="cp-badge cp-done">{c.doneAt ? `Fait le ${formatDate(c.doneAt)}` : 'Fait'}</span>
+                        ) : (
+                          state && <span className={`cp-badge cp-${state}`}>{COUNTERPART_BADGE[state]}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        onClick={() => removeCounterpart(c.key)}
+                        title="Retirer"
+                        aria-label={`Retirer ${c.label || 'cette contrepartie'}`}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <button type="button" className="btn btn-outline btn-sm" onClick={addCounterpart}>
+              + Ajouter une contrepartie
+            </button>
+          </fieldset>
+
           <label>
             Notes
             <textarea
@@ -229,7 +368,7 @@ export default function SponsorDialog({ sponsor, team, tiers, presetStatus, defa
               value={form.notes}
               onChange={update('notes')}
               maxLength={5000}
-              placeholder="Historique des échanges, contreparties promises (logo, posts…), points d'attention…"
+              placeholder="Historique des échanges, points d'attention…"
             />
           </label>
 
