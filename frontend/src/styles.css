@@ -1803,3 +1803,6 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   }
   .kanban-column { scroll-snap-align: start; }
 }
+
+/* Lien « Mot de passe oublié ? » sous le champ */
+.field-link { align-self: flex-end; font-size: 0.8rem; font-weight: 400; }

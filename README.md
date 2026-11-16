@@ -50,6 +50,25 @@ Activer le SSO Google :
 3. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`, puis redémarrer le backend.
    Le bouton Google reste masqué tant qu'ils sont vides.
 
+### Mot de passe oublié (envoi de mails)
+
+« Mot de passe oublié ? » sur la page de connexion envoie un lien de réinitialisation **à usage unique,
+valable 1 heure** (jeton stocké haché). La réponse est la même que le compte existe ou non ; limites :
+3 mails par compte et par heure, 10 demandes par IP et par heure. Le nouveau mot de passe ferme
+toutes les sessions ouvertes et connecte l'utilisateur. Le lien reste masqué tant que l'envoi n'est pas configuré.
+
+Configuration (`.env`) : `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `MAIL_FROM_NAME`.
+- **Relais SMTP Google Workspace** (recommandé, sans mot de passe) : console d'admin → Applications →
+  Google Workspace → Gmail → Routage → *Service de relais SMTP* : expéditeurs « uniquement les adresses de
+  mes domaines », authentification « uniquement les adresses IP spécifiées » (IP du serveur), TLS obligatoire.
+  Puis `SMTP_HOST=smtp-relay.gmail.com`, `SMTP_PORT=587`, `SMTP_USER`/`SMTP_PASS` vides.
+- **Compte + mot de passe d'application** : `SMTP_HOST=smtp.gmail.com`, `SMTP_USER=erp@arece.eu`,
+  `SMTP_PASS=<mot de passe d'application>` (validation en deux étapes requise sur ce compte).
+
+Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.google.com ~all`), DKIM
+(console d'admin → Gmail → Authentifier les e-mails) et DMARC. Tester l'envoi :
+`docker compose -f docker-compose.prod.yml exec backend node src/scripts/test-mail.js toi@exemple.fr`
+
 ### Wiki
 
 Page **Wiki** pour tous les membres validés : des pages en **Markdown** rangées par catégorie
@@ -97,13 +116,16 @@ les sortants en `alumni` à chaque rentrée).
 
 | Méthode | Route                         | Auth |
 |---------|-------------------------------|------|
-| GET     | `/api/auth/config`            | — (SSO Google activé ?) |
+| GET     | `/api/auth/config`            | — (SSO Google, mot de passe oublié activés ?) |
 | POST    | `/api/auth/signup`            | — (mail perso ; LinkedIn et promo facultatifs) |
 | POST    | `/api/auth/login`             | — (refusé pour @arece.eu / @edu.ece.fr) |
 | GET     | `/api/auth/me`                | ✔    |
 | PUT     | `/api/auth/email` `{ email, currentPassword }` | ✔ |
 | PUT     | `/api/auth/password` `{ currentPassword, newPassword }` | ✔ (déconnecte les autres sessions) |
 | POST    | `/api/auth/logout`            | ✔    |
+| POST    | `/api/auth/forgot-password` `{ email }` | — (mail de réinitialisation, réponse identique dans tous les cas) |
+| GET     | `/api/auth/reset-password?token=` | — (lien encore valable ?) |
+| POST    | `/api/auth/reset-password` `{ token, password }` | — (nouveau mot de passe, renvoie une session) |
 | POST    | `/api/auth/google/link-ticket` | ✔ (lance la liaison Google) |
 | GET     | `/api/auth/google/start?mode=login\|link` | — (redirige vers Google) |
 | GET     | `/api/auth/google/callback`   | — (retour de Google) |

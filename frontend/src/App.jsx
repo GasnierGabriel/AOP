@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, NavLink, Link, useLocation } from 'react-router-dom';
 import api, { TOKEN_KEY } from './api';
 import Login from './pages/Login';
+import MotDePasseOublie from './pages/MotDePasseOublie';
+import ReinitialiserMotDePasse from './pages/ReinitialiserMotDePasse';
 import Signup from './pages/Signup';
 import Annuaire from './pages/Annuaire';
 import MemberDetail from './pages/MemberDetail';
@@ -204,6 +206,9 @@ export default function App() {
           />
           {/* Retour de la connexion Google (jeton dans le fragment de l'URL) */}
           <Route path="/login/google" element={<GoogleCallback onAuth={handleAuth} />} />
+          <Route path="/mot-de-passe-oublie" element={<PublicOnlyRoute token={token}><MotDePasseOublie /></PublicOnlyRoute>} />
+          {/* Lien reçu par mail : accessible même connecté (le nouveau mot de passe ouvre une nouvelle session) */}
+          <Route path="/reinitialiser-mot-de-passe" element={<ReinitialiserMotDePasse onAuth={handleAuth} />} />
           <Route
             path="/signup"
             element={<PublicOnlyRoute token={token}><Signup onAuth={handleAuth} /></PublicOnlyRoute>}

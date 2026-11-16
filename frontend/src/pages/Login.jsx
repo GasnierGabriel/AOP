@@ -10,9 +10,13 @@ export default function Login({ onAuth }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [google, setGoogle] = useState({ enabled: false, domain: 'arece.eu' });
+  const [passwordReset, setPasswordReset] = useState(false);
 
   useEffect(() => {
-    loadAuthConfig().then((config) => setGoogle(config.google));
+    loadAuthConfig().then((config) => {
+      setGoogle(config.google);
+      setPasswordReset(Boolean(config.passwordReset));
+    });
   }, []);
 
   const googleMessage = GOOGLE_MESSAGES[params.get('google')];
@@ -67,6 +71,11 @@ export default function Login({ onAuth }) {
         <label>
           Mot de passe
           <input type="password" name="password" value={form.password} onChange={handleChange} required autoComplete="current-password" />
+          {passwordReset && (
+            <Link to="/mot-de-passe-oublie" state={{ email: form.email }} className="field-link">
+              Mot de passe oublié ?
+            </Link>
+          )}
         </label>
         {error && <div className="alert alert-error">{error}</div>}
         <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
