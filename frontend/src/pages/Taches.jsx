@@ -111,30 +111,34 @@ export default function Taches({ session, onSessionChange }) {
     [tasks]
   );
 
-  const visible = useMemo(() => {
+  // Filtres actifs ; « skip » ignore un critère pour calculer le compteur de son propre bouton
+  const { visible, myOpen, lateCount } = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const isLate = (t) => ['overdue', 'today'].includes(dueState(t));
     const matchesOwner = (t) => {
       if (!ownerFilter) return true;
       if (ownerFilter === 'none') return t.assignees.length === 0;
       if (ownerFilter.startsWith('ext:')) return t.assignees.some((a) => !a.userId && a.name === ownerFilter.slice(4));
       return isAssignedTo(t, ownerFilter === 'me' ? myId : Number(ownerFilter));
     };
-    return tasks.filter(
-      (t) =>
-        (!poleFilter || (poleFilter === 'none' ? !t.pole : t.pole?.id === Number(poleFilter))) &&
-        (!priorityFilter || t.priority === priorityFilter) &&
-        (!lateOnly || ['overdue', 'today'].includes(dueState(t))) &&
-        matchesOwner(t) &&
-        (!term || [t.title, t.context, ...t.assignees.map(assigneeName)].some((x) => x && x.toLowerCase().includes(term)))
-    );
+    const matches = (t, skip) =>
+      (!poleFilter || (poleFilter === 'none' ? !t.pole : t.pole?.id === Number(poleFilter))) &&
+      (!priorityFilter || t.priority === priorityFilter) &&
+      (skip === 'late' || !lateOnly || isLate(t)) &&
+      (skip === 'owner' || matchesOwner(t)) &&
+      (!term || [t.title, t.context, ...t.assignees.map(assigneeName)].some((x) => x && x.toLowerCase().includes(term)));
+    return {
+      visible: tasks.filter((t) => matches(t)),
+      // Compteurs cohérents avec les autres filtres : « En retard » pour le responsable choisi, etc.
+      myOpen: tasks.filter((t) => matches(t, 'owner') && t.status !== 'done' && isAssignedTo(t, myId)).length,
+      lateCount: tasks.filter((t) => matches(t, 'late') && isLate(t)).length,
+    };
   }, [tasks, search, poleFilter, ownerFilter, priorityFilter, lateOnly, myId]);
 
   const columns = useMemo(
     () => Object.fromEntries(TASK_STATUSES.map((s) => [s.key, visible.filter((t) => t.status === s.key).sort(byPosition)])),
     [visible]
   );
-  const myOpen = tasks.filter((t) => t.status !== 'done' && isAssignedTo(t, myId)).length;
-  const lateCount = tasks.filter((t) => ['overdue', 'today'].includes(dueState(t))).length;
   const hasFilters = Boolean(search || poleFilter || ownerFilter || priorityFilter || lateOnly);
 
   const replaceTask = (task) => setTasks((list) => list.map((t) => (t.id === task.id ? task : t)));
