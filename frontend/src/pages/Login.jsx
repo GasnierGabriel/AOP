@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import { GOOGLE_MESSAGES, GoogleIcon, googleLoginUrl, loadAuthConfig } from '../googleSso';
 
 export default function Login({ onAuth }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
+  // Page demandée avant la connexion (chemin interne uniquement)
+  const from = typeof location.state?.from === 'string' && location.state.from.startsWith('/') ? location.state.from : '/annuaire';
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +34,7 @@ export default function Login({ onAuth }) {
     try {
       const { data } = await api.post('/auth/login', form);
       onAuth(data.token);
-      navigate('/annuaire');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(errorMessage(err, 'Connexion impossible'));
       setSubmitting(false);

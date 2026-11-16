@@ -13,6 +13,7 @@ import Connexion from './pages/Connexion';
 import GoogleCallback from './pages/GoogleCallback';
 import Sponsoring from './pages/Sponsoring';
 import Taches from './pages/Taches';
+import AutoriserAssistant from './pages/AutoriserAssistant';
 import Wiki from './pages/Wiki';
 import WikiPage from './pages/WikiPage';
 import WikiEditor from './pages/WikiEditor';
@@ -118,7 +119,9 @@ function Navbar({ session, onLogout }) {
 }
 
 function PrivateRoute({ token, loading, children }) {
-  if (!token) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  // Après connexion, retour à la page demandée (ex : autorisation d'un assistant IA)
+  if (!token) return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   if (loading) return <div className="loading">Chargement…</div>;
   return children;
 }
@@ -222,6 +225,14 @@ export default function App() {
             element={privateEl(
               <MemberRoute session={session}>
                 <Taches session={session} onSessionChange={refreshSession} />
+              </MemberRoute>
+            )}
+          />
+          <Route
+            path="/autoriser-assistant"
+            element={privateEl(
+              <MemberRoute session={session}>
+                <AutoriserAssistant session={session} />
               </MemberRoute>
             )}
           />

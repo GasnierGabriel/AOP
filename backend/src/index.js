@@ -11,9 +11,14 @@ const annuaireRoutes = require('./routes/annuaire');
 const sponsoringRoutes = require('./routes/sponsoring');
 const wikiRoutes = require('./routes/wiki');
 const taskRoutes = require('./routes/tasks');
+const { mountMcp, mcpApiRouter } = require('./mcp');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
+app.set('trust proxy', 1); // derrière Caddy : IP réelle des visiteurs (limites de débit)
+
+// Serveur MCP et routes OAuth standard, avec leurs propres règles CORS et de lecture du corps
+mountMcp(app);
 
 app.use(cors({
   origin: (process.env.CORS_ORIGIN || 'http://localhost:3001').split(',').map((o) => o.trim()),
@@ -35,6 +40,7 @@ app.use('/api/annuaire', annuaireRoutes);
 app.use('/api/sponsoring', sponsoringRoutes);
 app.use('/api/wiki', wikiRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/mcp', mcpApiRouter);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Route introuvable' });
