@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="168 -37 490 490">
+  <!-- Pictogramme du logo ARECE (voiture + ondes), blanc sur bleu marine, traits épaissis et deux ondes sur trois pour rester lisible en 16 px -->
+  <rect x="168" y="-37" width="490" height="490" rx="106" fill="#000f2e"/>
+  <g fill="none" stroke="#fff" stroke-width="30" stroke-linejoin="round" stroke-miterlimit="10">
+    <path d="M194.8,131.6l76.2,10.3c0,0-14.4,95.3,35.2,83.8l88.5-38.7l0.4,51.6c0,0,108.5-33.2,236,29.6"/>
+    <path d="M221.1,288.8c0-16.8,23.5-30.5,52.5-30.5s52.5,13.6,52.5,30.5"/>
+    <path d="M468.6,288.8c0-16.8,23.5-30.5,52.5-30.5c29,0,52.5,13.6,52.5,30.5"/>
+    <path d="M609.2,195.2c-0.5-4.6-1.4-9.2-2.8-13.7c-5.3-17-16.8-32-33.6-41.3c-21.2-11.7-45.7-11.6-65.9-1.7"/>
+    <path d="M557.3,200.6c-0.1-1.1-0.3-2.2-0.6-3.3c-1.4-4.7-4.5-9-9.2-11.5s-9.9-3-14.7-1.7c-1.1,0.3-2.1,0.7-3.1,1.2"/>
+  </g>
+</svg>
