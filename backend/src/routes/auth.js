@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const { query, pool } = require('../db');
 const {
@@ -23,6 +24,7 @@ const {
   getFullMember,
 } = require('../members');
 const google = require('../google');
+const mailer = require('../mailer');
 const { hasSponsoringAccess, countUrgentCounterparts } = require('../sponsoring');
 
 const router = express.Router();
@@ -70,6 +72,7 @@ router.get('/config', (req, res) => {
   res.json({
     google: { enabled: google.isEnabled(), domain: google.DOMAIN },
     blockedEmailDomains: BLOCKED_EMAIL_DOMAINS,
+    passwordReset: mailer.isEnabled(), // lien « Mot de passe oublié » affiché si l'envoi de mails est configuré
   });
 });
 
@@ -219,6 +222,139 @@ router.put('/password', authenticateToken, async (req, res) => {
     hashToken(req.token),
   ]);
   res.json({ otherSessionsClosed: rowCount });
+});
+
+/* ---------- Mot de passe oublié ---------- */
+
+const RESET_TTL_MINUTES = 60;
+const RESET_MAX_PER_HOUR = 3; // mails de réinitialisation par compte et par heure
+const IP_MAX_PER_HOUR = 10; // demandes par adresse IP et par heure
+const FORGOT_MESSAGE =
+  'Si un compte existe avec cette adresse, un mail avec un lien de réinitialisation vient de partir. Pense à regarder dans les spams.';
+
+// Limite simple en mémoire par IP (l'API est derrière Caddy, qui transmet l'IP du visiteur)
+const ipHits = new Map();
+function tooManyFromIp(req) {
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+  const now = Date.now();
+  const hits = (ipHits.get(ip) || []).filter((t) => now - t < 3600 * 1000);
+  hits.push(now);
+  ipHits.set(ip, hits);
+  if (ipHits.size > 5000) ipHits.clear(); // garde-fou mémoire
+  return hits.length > IP_MAX_PER_HOUR;
+}
+
+async function sendResetMail(email) {
+  const { rows } = await query('SELECT id, full_name, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+  const user = rows[0];
+  if (!user) return;
+  const { rows: recent } = await query(
+    "SELECT COUNT(*)::int AS n FROM password_resets WHERE user_id = $1 AND created_at > NOW() - INTERVAL '1 hour'",
+    [user.id]
+  );
+  if (recent[0].n >= RESET_MAX_PER_HOUR) return;
+
+  // Un seul lien valable à la fois : les précédents sont invalidés
+  const token = crypto.randomBytes(32).toString('base64url');
+  await query('UPDATE password_resets SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [user.id]);
+  await query(
+    `INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES ($1, $2, NOW() + INTERVAL '${RESET_TTL_MINUTES} minutes')`,
+    [user.id, hashToken(token)]
+  );
+
+  const url = `${mailer.PUBLIC_URL}/reinitialiser-mot-de-passe?token=${token}`;
+  const firstName = user.full_name.split(' ')[0];
+  const { text, html } = mailer.layout({
+    title: 'Réinitialiser ton mot de passe',
+    paragraphs: [
+      `Bonjour ${firstName},`,
+      "Quelqu'un (sans doute toi) a demandé à réinitialiser le mot de passe de ton compte sur l'ERP ARECE.",
+      `Ce lien est valable ${RESET_TTL_MINUTES} minutes et ne fonctionne qu'une fois.`,
+    ],
+    button: { label: 'Choisir un nouveau mot de passe', url },
+    footer: "Tu n'as rien demandé ? Ignore ce mail : ton mot de passe actuel reste valable.",
+  });
+  await mailer.sendMail({ to: user.email, subject: 'ERP ARECE · Réinitialisation de ton mot de passe', text, html });
+}
+
+// POST /api/auth/forgot-password { email } — réponse identique que le compte existe ou non
+router.post('/forgot-password', async (req, res) => {
+  if (!mailer.isEnabled()) {
+    return res.status(503).json({
+      error: "La réinitialisation par mail n'est pas encore disponible : contacte un membre du bureau.",
+    });
+  }
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+  if (!EMAIL_RE.test(email) || email.length > 255) return res.status(400).json({ error: 'Email invalide' });
+  if (isBlockedEmail(email)) {
+    return res.status(400).json({
+      error: `Les adresses ${BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' et ')} ne servent pas d'identifiant : indique le mail perso de ton compte.`,
+    });
+  }
+  if (tooManyFromIp(req)) {
+    return res.status(429).json({ error: 'Trop de demandes, réessaie dans une heure.' });
+  }
+
+  // Envoi après la réponse : même délai que le compte existe ou non
+  res.json({ message: FORGOT_MESSAGE });
+  sendResetMail(email).catch((err) => console.error('Envoi du mail de réinitialisation impossible :', err.message));
+});
+
+async function findReset(token) {
+  if (typeof token !== 'string' || token.length < 20 || token.length > 100) return null;
+  const { rows } = await query(
+    `SELECT r.id, r.user_id FROM password_resets r
+      WHERE r.token_hash = $1 AND r.used_at IS NULL AND r.expires_at > NOW()`,
+    [hashToken(token)]
+  );
+  return rows[0] || null;
+}
+const INVALID_RESET = {
+  error: 'Ce lien de réinitialisation est invalide ou a expiré : refais une demande.',
+  code: 'INVALID_RESET_TOKEN',
+};
+
+// GET /api/auth/reset-password?token= — le lien est-il encore valable ?
+router.get('/reset-password', async (req, res) => {
+  const reset = await findReset(req.query.token);
+  if (!reset) return res.status(400).json(INVALID_RESET);
+  res.json({ valid: true });
+});
+
+// POST /api/auth/reset-password { token, password } — nouveau mot de passe, toutes les sessions fermées, connexion
+router.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({ error: `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères` });
+  }
+  const passwordHash = await hashPassword(password);
+
+  const client = await pool.connect();
+  let userId;
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT id, user_id FROM password_resets
+        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW() FOR UPDATE`,
+      [typeof token === 'string' ? hashToken(token) : '']
+    );
+    if (rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json(INVALID_RESET);
+    }
+    userId = rows[0].user_id;
+    await client.query('UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1', [userId, passwordHash]);
+    await client.query('UPDATE password_resets SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL', [userId]);
+    await client.query('DELETE FROM auth_tokens WHERE user_id = $1', [userId]); // déconnecte les autres appareils
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  res.json({ token: await issueToken(userId) });
 });
 
 // POST /api/auth/logout — invalide le token côté serveur
