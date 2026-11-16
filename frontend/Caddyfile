@@ -14,6 +14,12 @@
 		reverse_proxy backend:3000
 	}
 
+	# Serveur MCP (assistants IA) et routes OAuth standard servies par le backend
+	@mcp path /mcp /authorize /token /register /revoke /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	handle @mcp {
+		reverse_proxy backend:3000
+	}
+
 	handle {
 		root * /srv
 		# Assets CRA hashés : cache long ; le reste (index.html des routes SPA) : revalidé à chaque fois

@@ -1806,3 +1806,30 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Lien « Mot de passe oublié ? » sous le champ */
 .field-link { align-self: flex-end; font-size: 0.8rem; font-weight: 400; }
+
+/* Assistants IA (MCP) */
+.assistants h3 { margin: 18px 0 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.mcp-url { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.mcp-url .muted { flex-basis: 100%; }
+.mcp-url code,
+.token-created code {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.mcp-howto { margin: 8px 0 4px; }
+.mcp-howto summary { cursor: pointer; font-weight: 600; }
+.mcp-howto ul { margin: 8px 0; padding-left: 18px; line-height: 1.6; }
+.access-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.access-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.access-list li > div { min-width: 0; }
+.token-created { display: flex; flex-direction: column; gap: 8px; }
+.token-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.token-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.token-form input { flex: 1; min-width: 200px; }
+.consent-list { margin: 12px 0; padding-left: 4px; list-style: none; line-height: 1.8; }
+.consent-card { margin: 24px auto; }
+.consent-card code { overflow-wrap: anywhere; }

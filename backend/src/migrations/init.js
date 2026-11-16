@@ -118,6 +118,48 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS password_resets_user_idx ON password_resets (user_id, created_at DESC);
 
+-- Serveur MCP (assistants IA : Claude, ChatGPT, Gemini…) : OAuth 2.1 avec enregistrement dynamique des clients
+CREATE TABLE IF NOT EXISTS oauth_clients (
+  client_id  VARCHAR(100) PRIMARY KEY,
+  metadata   JSONB NOT NULL,          -- informations du client telles qu'enregistrées (nom, redirect_uris…)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Demandes d'autorisation en attente de l'accord du membre (page « Autoriser » de l'ERP)
+CREATE TABLE IF NOT EXISTS oauth_requests (
+  id         VARCHAR(64) PRIMARY KEY,
+  client_id  VARCHAR(100) NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+  params     JSONB NOT NULL,          -- redirect_uri, state, code_challenge, scopes, resource
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Codes d'autorisation (usage unique, 5 min) et jetons (accès 1 h, renouvellement 30 j, personnels 1 an), hachés
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  code_hash      VARCHAR(64) PRIMARY KEY,
+  client_id      VARCHAR(100) NOT NULL REFERENCES oauth_clients(client_id) ON DELETE CASCADE,
+  user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_challenge VARCHAR(200) NOT NULL,
+  redirect_uri   TEXT NOT NULL,
+  scopes         TEXT[] NOT NULL DEFAULT '{}',
+  resource       TEXT,
+  expires_at     TIMESTAMPTZ NOT NULL,
+  used_at        TIMESTAMPTZ
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+  id           SERIAL PRIMARY KEY,
+  token_hash   VARCHAR(64) NOT NULL UNIQUE,
+  kind         VARCHAR(10) NOT NULL CHECK (kind IN ('access', 'refresh', 'personal')),
+  client_id    VARCHAR(100) REFERENCES oauth_clients(client_id) ON DELETE CASCADE,  -- NULL : jeton personnel
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label        VARCHAR(100),          -- nom donné à un jeton personnel
+  scopes       TEXT[] NOT NULL DEFAULT '{}',
+  resource     TEXT,
+  expires_at   TIMESTAMPTZ NOT NULL,
+  revoked_at   TIMESTAMPTZ,
+  last_used_at TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS oauth_tokens_user_idx ON oauth_tokens (user_id, kind);
+
 CREATE TABLE IF NOT EXISTS tags (
   id         SERIAL PRIMARY KEY,
   name       VARCHAR(40) NOT NULL,

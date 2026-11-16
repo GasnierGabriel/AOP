@@ -78,6 +78,36 @@ async function revokeToken(token) {
   await query('DELETE FROM auth_tokens WHERE token = $1', [hashToken(token)]);
 }
 
+/* Jetons des assistants IA (MCP) : accès limité aux Tâches et au Sponsoring, sans suppression */
+const MCP_TOKEN_PREFIX = 'erpmcp_';
+const MCP_ALLOWED_PATHS = [/^\/api\/tasks(\/|\?|$)/, /^\/api\/sponsoring(\/|\?|$)/, /^\/api\/auth\/me(\?|$)/];
+
+// Jeton d'accès OAuth ou jeton personnel encore valable (null sinon)
+async function findMcpToken(token) {
+  if (typeof token !== 'string' || !token.startsWith(MCP_TOKEN_PREFIX)) return null;
+  const { rows } = await query(
+    `UPDATE oauth_tokens SET last_used_at = NOW()
+      WHERE token_hash = $1 AND kind IN ('access', 'personal') AND revoked_at IS NULL AND expires_at > NOW()
+      RETURNING user_id, client_id, scopes, resource, expires_at`,
+    [hashToken(token)]
+  );
+  return rows[0] || null;
+}
+
+async function authenticateMcpToken(req, res, next, token) {
+  if (req.method === 'DELETE' || !MCP_ALLOWED_PATHS.some((re) => re.test(req.originalUrl))) {
+    return res.status(403).json({ error: "Action non autorisée pour un assistant IA (lecture et modification des tâches et du sponsoring uniquement, sans suppression)" });
+  }
+  const found = await findMcpToken(token);
+  if (!found) return res.status(401).json({ error: 'Jeton invalide, expiré ou révoqué' });
+  const { rows } = await query(`SELECT ${userColumns()} FROM users WHERE id = $1`, [found.user_id]);
+  if (rows.length === 0) return res.status(401).json({ error: 'Compte introuvable' });
+  req.user = rows[0];
+  req.token = token;
+  req.viaAssistant = true;
+  next();
+}
+
 // Middleware : Authorization: Bearer <token>
 // Recharge l'utilisateur depuis la base à chaque requête pour que les changements
 // de statut / niveau / bureau s'appliquent immédiatement.
@@ -86,6 +116,7 @@ async function authenticateToken(req, res, next) {
   if (scheme !== 'Bearer' || !token) {
     return res.status(401).json({ error: 'Authentification requise' });
   }
+  if (token.startsWith(MCP_TOKEN_PREFIX)) return authenticateMcpToken(req, res, next, token);
 
   let payload;
   try {
@@ -194,6 +225,8 @@ module.exports = {
   authenticateToken,
   requireMember,
   requireBureau,
+  MCP_TOKEN_PREFIX,
+  findMcpToken,
   getCurrentAcademicYear,
   canViewUser,
   getAskAreceAccess,

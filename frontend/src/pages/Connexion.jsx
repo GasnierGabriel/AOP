@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import { GOOGLE_MESSAGES, GoogleIcon, googleLinkUrl, loadAuthConfig } from '../googleSso';
+import AssistantsSection from '../components/AssistantsSection';
 import { formatDate } from '../utils';
 
 const BLOCKED_LIST = BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' ni ');
@@ -236,6 +237,8 @@ export default function Connexion({ onSessionChange }) {
           </form>
         </section>
       </div>
+
+      <AssistantsSection />
     </div>
   );
 }

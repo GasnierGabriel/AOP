@@ -69,6 +69,22 @@ Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.goog
 (console d'admin → Gmail → Authentifier les e-mails) et DMARC. Tester l'envoi :
 `docker compose -f docker-compose.prod.yml exec backend node src/scripts/test-mail.js toi@exemple.fr`
 
+### Assistants IA (serveur MCP)
+
+`<PUBLIC_URL>/mcp` est un serveur MCP distant (Streamable HTTP, sans session) utilisable depuis Claude
+(connecteur personnalisé), ChatGPT (connecteur en mode développeur), Gemini CLI / Antigravity, Claude Code…
+- **Connexion** : OAuth 2.1 avec enregistrement dynamique des clients et PKCE (routes standard `/authorize`,
+  `/token`, `/register`, `/revoke`, `/.well-known/oauth-*` fournies par le SDK MCP officiel). L'étape d'accord se
+  fait dans l'ERP (`/autoriser-assistant`) par le membre connecté. Jetons d'accès 1 h, renouvellement 30 jours
+  (rotation), tous stockés hachés. Pour les outils sans OAuth : **jetons personnels** (1 an) créés dans
+  *Informations de connexion → Assistants IA*, où l'on peut aussi déconnecter un assistant.
+- **Droits** : l'assistant agit avec les droits du membre. Les jetons d'assistant ne sont acceptés que sur
+  `/api/tasks`, `/api/sponsoring` et `/api/auth/me`, et jamais pour une suppression.
+- **Outils** : `erp_reference`, `taches_lister`, `tache_details`, `tache_creer`, `tache_modifier`, `tache_commenter`,
+  et pour le bureau / tag Sponsoring : `partenaires_lister`, `partenaire_details`, `partenaire_creer`,
+  `partenaire_modifier`, `partenaire_ajouter_contact`, `partenaire_ajouter_contrepartie`, `contrepartie_marquer`.
+  Ils appellent l'API de l'ERP : mêmes validations que l'interface.
+
 ### Wiki
 
 Page **Wiki** pour tous les membres validés : des pages en **Markdown** rangées par catégorie
