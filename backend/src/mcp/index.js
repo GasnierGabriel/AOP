@@ -2,7 +2,11 @@
 // Transport Streamable HTTP sans session ; connexion OAuth 2.1 (enregistrement dynamique, PKCE) ou jeton personnel.
 const express = require('express');
 const cors = require('cors');
-const { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } = require('@modelcontextprotocol/sdk/server/auth/router.js');
+const {
+  createOAuthMetadata,
+  mcpAuthRouter,
+  getOAuthProtectedResourceMetadataUrl,
+} = require('@modelcontextprotocol/sdk/server/auth/router.js');
 const { requireBearerAuth } = require('@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
 const { query } = require('../db');
@@ -13,6 +17,34 @@ const { buildServer } = require('./tools');
 
 // Routes OAuth standard + point d'entrée /mcp (à monter avant les autres middlewares de l'API)
 function mountMcp(app) {
+  // Métadonnées OAuth publiées par nos soins, avant celles du SDK : l'émetteur (issuer) doit être exactement
+  // l'adresse sous laquelle elles sont publiées, sans « / » final (le SDK en ajoute un), et identique au
+  // paramètre iss renvoyé après l'autorisation. Claude refuse la connexion sinon.
+  const metadataCors = cors({ origin: '*' });
+  const authServerMetadata = {
+    ...createOAuthMetadata({
+      provider: oauth.provider,
+      issuerUrl: new URL(oauth.PUBLIC_URL),
+      serviceDocumentationUrl: new URL(`${oauth.PUBLIC_URL}/connexion`),
+      scopesSupported: [oauth.SCOPE],
+    }),
+    issuer: oauth.PUBLIC_URL,
+    authorization_response_iss_parameter_supported: true,
+  };
+  const resourceMetadata = {
+    resource: oauth.MCP_URL,
+    authorization_servers: [oauth.PUBLIC_URL],
+    scopes_supported: [oauth.SCOPE],
+    bearer_methods_supported: ['header'],
+    resource_name: 'ERP ARECE',
+    resource_documentation: `${oauth.PUBLIC_URL}/connexion`,
+  };
+  app.options(['/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'], metadataCors);
+  app.get('/.well-known/oauth-authorization-server', metadataCors, (req, res) => res.json(authServerMetadata));
+  app.get(['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'], metadataCors, (req, res) =>
+    res.json(resourceMetadata)
+  );
+
   app.use(
     mcpAuthRouter({
       provider: oauth.provider,
