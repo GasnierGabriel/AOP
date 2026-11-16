@@ -197,6 +197,7 @@ async function denyRequest(id) {
     error: 'access_denied',
     error_description: "Accès refusé par le membre",
     state: request.params.state,
+    iss: PUBLIC_URL,
   });
 }
 

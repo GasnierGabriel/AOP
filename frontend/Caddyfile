@@ -15,7 +15,7 @@
 	}
 
 	# Serveur MCP (assistants IA) et routes OAuth standard servies par le backend
-	@mcp path /mcp /authorize /token /register /revoke /.well-known/oauth-authorization-server /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	@mcp path /mcp /authorize /token /register /revoke /.well-known/*
 	handle @mcp {
 		reverse_proxy backend:3000
 	}
