@@ -20,6 +20,8 @@ function loadMermaid() {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'strict', // pas de HTML ni de clics/scripts dans les libellés
+        htmlLabels: false, // libellés en texte SVG : rien de HTML à injecter, et ils survivent au nettoyage DOMPurify
+        flowchart: { htmlLabels: false },
         theme: 'base',
         fontFamily: 'Poppins, Arial, sans-serif',
         themeVariables: {
