@@ -177,6 +177,10 @@ export default function WikiEditor() {
               <tr><td><code>- élément</code> · <code>1. élément</code></td><td>Listes à puces / numérotées</td></tr>
               <tr><td><code>- [ ] tâche</code></td><td>Case à cocher</td></tr>
               <tr><td><code>[texte](https://…)</code></td><td>Lien</td></tr>
+              <tr>
+                <td><code>[texte](#mon-titre)</code><br /><code>[texte](/wiki/p/page#mon-titre)</code></td>
+                <td>Lien vers un titre de cette page ou d’une autre (« ## Mon titre » → #mon-titre, sans accents ; le « # » au survol d’un titre copie son lien)</td>
+              </tr>
               <tr><td><code>![légende](https://…/image.png)</code></td><td>Image (par lien)</td></tr>
               <tr><td><code>`code`</code> · <code>```</code> bloc <code>```</code></td><td>Code</td></tr>
               <tr><td><code>&gt; texte</code></td><td>Encadré / citation</td></tr>

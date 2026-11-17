@@ -96,6 +96,9 @@ ajouter, renommer ou supprimer une catégorie vide). Chacun peut créer et modif
 enregistrement garde une **version** consultable et restaurable dans l'historique. Si quelqu'un a
 modifié la page pendant qu'on l'éditait, l'enregistrement est refusé au lieu d'écraser son travail.
 Suppression d'une page : son auteur ou le bureau. Recherche dans les titres et le contenu.
+Chaque titre a une **ancre** comme sur Wikipedia (« ## Règlement FSUK » → `#reglement-fsuk`, lien copiable via le
+« # » au survol), utilisable dans les liens (`[voir](#reglement-fsuk)`, `[budget](/wiki/p/tresorerie#budget)`) et
+dans une adresse partagée ; sommaire automatique en haut des pages d'au moins 3 titres.
 
 API : `GET /api/wiki/categories`, `POST` / `PATCH` / `DELETE /api/wiki/categories/:id` (bureau),
 `GET /api/wiki/pages?categorie=&q=&tri=`, `GET` / `PUT` / `DELETE /api/wiki/pages/:slug`,

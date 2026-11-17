@@ -160,7 +160,7 @@ export default function WikiPage() {
       <div className="wiki-layout">
         <article className="card wiki-content">
           {revision && revision.title !== page.title && <h2 className="revision-title">{revision.title}</h2>}
-          <Markdown source={shown.content} />
+          <Markdown source={shown.content} toc />
         </article>
 
         {history && (
