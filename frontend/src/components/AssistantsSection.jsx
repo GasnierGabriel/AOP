@@ -83,8 +83,8 @@ export default function AssistantsSection() {
     <section className="card assistants">
       <h2>Assistants IA (MCP)</h2>
       <p className="muted">
-        Connecte Claude, ChatGPT ou Gemini à l'ERP pour consulter et mettre à jour les tâches
-        et, si tu y as accès, le sponsoring, en langage naturel. L'assistant agit avec tes droits et ne peut rien
+        Connecte Claude, ChatGPT ou Gemini à l'ERP pour consulter et mettre à jour les tâches,
+        le wiki et, si tu y as accès, le sponsoring, en langage naturel. L'assistant agit avec tes droits et ne peut rien
         supprimer.
       </p>
 
@@ -113,7 +113,8 @@ export default function AssistantsSection() {
         </ul>
         <p className="muted small">
           À la première utilisation, l'ERP te demande d'autoriser l'assistant. Exemple de demande : « Quelles sont mes
-          tâches en retard ? » ou « Passe le partenaire Würth en négociation ».
+          tâches en retard ? », « Résume la page du wiki sur le règlement FSUK » ou « Passe le partenaire Würth en
+          négociation ».
         </p>
       </details>
 

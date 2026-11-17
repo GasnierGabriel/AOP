@@ -50,6 +50,7 @@ export default function AutoriserAssistant({ session }) {
           </p>
           <ul className="consent-list">
             <li>✔ Consulter, créer, modifier, déplacer et commenter les tâches</li>
+            <li>✔ Consulter, créer et modifier les pages du wiki (chaque modification reste dans l'historique)</li>
             {request.canSponsoring && <li>✔ Consulter et mettre à jour le sponsoring (partenaires, contacts, contreparties)</li>}
             <li>✘ Rien supprimer, ni accéder à tes informations de connexion</li>
           </ul>

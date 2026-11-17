@@ -79,8 +79,10 @@ Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.goog
   (rotation), tous stockés hachés. Pour les outils sans OAuth : **jetons personnels** (1 an) créés dans
   *Informations de connexion → Assistants IA*, où l'on peut aussi déconnecter un assistant.
 - **Droits** : l'assistant agit avec les droits du membre. Les jetons d'assistant ne sont acceptés que sur
-  `/api/tasks`, `/api/sponsoring` et `/api/auth/me`, et jamais pour une suppression.
+  `/api/tasks`, `/api/wiki`, `/api/sponsoring` et `/api/auth/me`, et jamais pour une suppression.
 - **Outils** : `erp_reference`, `taches_lister`, `tache_details`, `tache_creer`, `tache_modifier`, `tache_commenter`,
+  `wiki_chercher`, `wiki_lire`, `wiki_creer_page`, `wiki_modifier_page` (remplacements ciblés, ajout en fin ou
+  contenu complet, protégé contre l'écrasement d'une modification concurrente), `wiki_historique`,
   et pour le bureau / tag Sponsoring : `partenaires_lister`, `partenaire_details`, `partenaire_creer`,
   `partenaire_modifier`, `partenaire_ajouter_contact`, `partenaire_ajouter_contrepartie`, `contrepartie_marquer`.
   Ils appellent l'API de l'ERP : mêmes validations que l'interface.
