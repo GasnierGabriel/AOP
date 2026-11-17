@@ -1583,7 +1583,7 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .heading-anchor.copied::after { content: ' lien copié'; font-size: 0.7em; }
 @media (hover: none) { .heading-anchor { opacity: 0.45; } }
 .markdown-toc { display: inline-block; margin: 0 0 1.2em; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: #f7f8fb; font-size: 0.92rem; max-width: 100%; }
-.markdown-toc ol { margin: 6px 0 0; padding-left: 1.2em; }
+.markdown-toc ol { margin: 6px 0 0; padding-left: 0; list-style: none; }
 .markdown-toc li { margin: 2px 0; }
 .markdown p, .markdown ul, .markdown ol, .markdown blockquote, .markdown pre, .markdown table { margin: 0 0 1em; }
 .markdown ul, .markdown ol { padding-left: 1.5em; }
