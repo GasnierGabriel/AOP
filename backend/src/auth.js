@@ -80,7 +80,7 @@ async function revokeToken(token) {
 
 /* Jetons des assistants IA (MCP) : accès limité aux Tâches et au Sponsoring, sans suppression */
 const MCP_TOKEN_PREFIX = 'erpmcp_';
-const MCP_ALLOWED_PATHS = [/^\/api\/tasks(\/|\?|$)/, /^\/api\/sponsoring(\/|\?|$)/, /^\/api\/auth\/me(\?|$)/];
+const MCP_ALLOWED_PATHS = [/^\/api\/tasks(\/|\?|$)/, /^\/api\/sponsoring(\/|\?|$)/, /^\/api\/wiki(\/|\?|$)/, /^\/api\/auth\/me(\?|$)/];
 
 // Jeton d'accès OAuth ou jeton personnel encore valable (null sinon)
 async function findMcpToken(token) {
@@ -96,7 +96,7 @@ async function findMcpToken(token) {
 
 async function authenticateMcpToken(req, res, next, token) {
   if (req.method === 'DELETE' || !MCP_ALLOWED_PATHS.some((re) => re.test(req.originalUrl))) {
-    return res.status(403).json({ error: "Action non autorisée pour un assistant IA (lecture et modification des tâches et du sponsoring uniquement, sans suppression)" });
+    return res.status(403).json({ error: "Action non autorisée pour un assistant IA (lecture et modification des tâches, du wiki et du sponsoring uniquement, sans suppression)" });
   }
   const found = await findMcpToken(token);
   if (!found) return res.status(401).json({ error: 'Jeton invalide, expiré ou révoqué' });

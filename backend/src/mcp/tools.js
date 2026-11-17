@@ -5,6 +5,7 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API = `http://127.0.0.1:${PORT}/api`;
+const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/+$/, '');
 
 const TASK_STATUS = { todo: 'À faire', doing: 'En cours', done: 'Fait' };
 const PRIORITY = { high: 'Haute', medium: 'Moyenne', low: 'Basse' };
@@ -127,6 +128,7 @@ function buildServer({ token, me }) {
       instructions:
         "ERP de l'association ARECE (Formula Student, ECE Paris). Tu agis au nom du membre connecté, avec ses droits. " +
         'Tâches : Kanban de l’asso (À faire / En cours / Fait), avec pôle, priorité, échéance, responsables et commentaires. ' +
+          'Wiki : documentation de l’asso, pages Markdown rangées par catégorie, avec historique des versions ; lis une page avant de la modifier et préfère des remplacements ciblés. ' +
         (me.canSponsoring ? 'Sponsoring : suivi des partenaires (statut, rang, contacts, contreparties promises). ' : '') +
         "Aucune suppression n'est possible depuis l'assistant : elle se fait dans l'ERP (https://erp.arece.eu). " +
         'Appelle erp_reference pour connaître les pôles, les membres et les valeurs possibles avant de créer ou modifier. ' +
@@ -314,6 +316,196 @@ function buildServer({ token, me }) {
     handler(async ({ id, texte }) => {
       const { comment } = await call('POST', `/tasks/${id}/comments`, { body: texte });
       return { commentaire_ajoute: { id: comment.id, date: comment.createdAt } };
+    })
+  );
+
+  /* ---------- Wiki (tous les membres validés) ---------- */
+
+  const pageView = (p) => ({
+    page: p.slug,
+    titre: p.title,
+    categorie: p.category.name,
+    modifiee_le: p.updatedAt,
+    modifiee_par: p.updatedBy?.fullName || null,
+    ...(p.excerpt !== undefined ? { apercu: p.excerpt } : {}),
+  });
+
+  // Page désignée par son identifiant (slug) ou, à défaut, par son titre exact ou partiel s'il est unique
+  async function resolvePage(ref) {
+    const slug = String(ref).trim();
+    const direct = await fetch(`${API}/wiki/pages/${encodeURIComponent(slug)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (direct.ok) return (await direct.json()).page;
+    if (direct.status !== 404) {
+      const data = await direct.json().catch(() => null);
+      throw new ToolError(data?.error || `Erreur ${direct.status}`);
+    }
+    const { pages } = await call('GET', `/wiki/pages?q=${encodeURIComponent(slug)}&tri=titre`);
+    const n = norm(slug);
+    const exact = pages.filter((p) => norm(p.title) === n);
+    const matches = exact.length ? exact : pages.filter((p) => norm(p.title).includes(n));
+    if (matches.length !== 1) {
+      throw new ToolError(
+        matches.length > 1
+          ? `Page « ${slug} » ambiguë : ${matches.slice(0, 15).map((p) => `${p.title} (${p.slug})`).join(', ')}`
+          : `Page « ${slug} » introuvable : utilise wiki_chercher pour trouver son identifiant`
+      );
+    }
+    return (await call('GET', `/wiki/pages/${encodeURIComponent(matches[0].slug)}`)).page;
+  }
+
+  async function categoryId(name) {
+    const { categories } = await call('GET', '/wiki/categories');
+    return findByName(categories, name, 'Catégorie').id;
+  }
+
+  server.registerTool(
+    'wiki_chercher',
+    {
+      title: 'Chercher dans le wiki',
+      description: 'Liste les pages du wiki (titre, catégorie, aperçu), avec recherche plein texte et filtre par catégorie. Sans argument : les catégories et les pages récemment modifiées.',
+      inputSchema: {
+        recherche: z.string().optional().describe('Texte cherché dans le titre et le contenu'),
+        categorie: z.string().optional().describe('Nom de la catégorie'),
+        tri: z.enum(['recent', 'titre']).optional().describe('recent (par défaut) ou titre'),
+        limite: z.number().int().min(1).max(100).optional().describe('Nombre maximum de pages (30 par défaut)'),
+      },
+      annotations: RO,
+    },
+    handler(async ({ recherche, categorie, tri = 'recent', limite = 30 }) => {
+      const { categories } = await call('GET', '/wiki/categories');
+      const params = new URLSearchParams({ tri });
+      if (recherche) params.set('q', recherche);
+      if (categorie) params.set('categorie', findByName(categories, categorie, 'Catégorie').slug);
+      const { pages } = await call('GET', `/wiki/pages?${params}`);
+      return {
+        categories: categories.map((c) => ({ nom: c.name, pages: c.pageCount, description: c.description || undefined })),
+        total: pages.length,
+        pages: pages.slice(0, limite).map(pageView),
+      };
+    })
+  );
+
+  server.registerTool(
+    'wiki_lire',
+    {
+      title: 'Lire une page du wiki',
+      description: 'Contenu Markdown complet d’une page. Renvoie aussi « version », à repasser à wiki_modifier_page.',
+      inputSchema: { page: z.string().min(1).describe('Identifiant de la page (ex : reglement-fsuk) ou son titre') },
+      annotations: RO,
+    },
+    handler(async ({ page }) => {
+      const p = await resolvePage(page);
+      return {
+        ...pageView(p),
+        creee_par: p.createdBy?.fullName || null,
+        creee_le: p.createdAt,
+        nombre_de_versions: p.revisionCount,
+        version: p.updatedAt,
+        lien: `${PUBLIC_URL}/wiki/p/${p.slug}`,
+        contenu: p.content,
+      };
+    })
+  );
+
+  server.registerTool(
+    'wiki_creer_page',
+    {
+      title: 'Créer une page du wiki',
+      description: 'Crée une page du wiki en Markdown dans une catégorie existante (les catégories se gèrent dans l’ERP).',
+      inputSchema: {
+        titre: z.string().min(1).max(200),
+        categorie: z.string().min(1).describe('Nom de la catégorie (voir wiki_chercher)'),
+        contenu: z.string().max(100000).describe('Contenu en Markdown'),
+      },
+      annotations: RW,
+    },
+    handler(async ({ titre, categorie, contenu }) => {
+      const { page } = await call('POST', '/wiki/pages', { title: titre, categoryId: await categoryId(categorie), content: contenu });
+      return { creee: { ...pageView(page), lien: `${PUBLIC_URL}/wiki/p/${page.slug}` } };
+    })
+  );
+
+  server.registerTool(
+    'wiki_modifier_page',
+    {
+      title: 'Modifier une page du wiki',
+      description:
+        'Modifie une page : titre, catégorie, et contenu de trois façons au choix : « remplacements » ciblés (recommandé), ' +
+        '« ajouter_a_la_fin », ou « contenu » complet. Chaque modification crée une version restaurable dans l’ERP. ' +
+        'Passe « version » (renvoyée par wiki_lire) pour ne pas écraser une modification faite entre-temps par quelqu’un d’autre.',
+      inputSchema: {
+        page: z.string().min(1).describe('Identifiant de la page ou son titre'),
+        version: z.string().optional().describe('Valeur « version » lue avec wiki_lire'),
+        titre: z.string().min(1).max(200).optional(),
+        categorie: z.string().optional().describe('Nom de la nouvelle catégorie'),
+        remplacements: z
+          .array(z.object({ ancien: z.string().min(1), nouveau: z.string() }))
+          .max(50)
+          .optional()
+          .describe('Passages à remplacer : chaque « ancien » doit apparaître exactement une fois dans la page'),
+        ajouter_a_la_fin: z.string().max(100000).optional().describe('Markdown ajouté à la fin de la page'),
+        contenu: z.string().max(100000).optional().describe('Nouveau contenu complet (remplace tout)'),
+      },
+      annotations: { ...RW, idempotentHint: false },
+    },
+    handler(async ({ page, version, titre, categorie, remplacements, ajouter_a_la_fin, contenu }) => {
+      if (contenu !== undefined && (remplacements || ajouter_a_la_fin !== undefined)) {
+        throw new ToolError('« contenu » remplace toute la page : ne le combine pas avec « remplacements » ou « ajouter_a_la_fin »');
+      }
+      const p = await resolvePage(page);
+      let content = contenu !== undefined ? contenu : p.content;
+      for (const { ancien, nouveau } of remplacements || []) {
+        const count = content.split(ancien).length - 1;
+        if (count !== 1) {
+          throw new ToolError(
+            count === 0
+              ? `Passage introuvable dans la page : « ${ancien.slice(0, 80)} ». Relis la page avec wiki_lire.`
+              : `Passage présent ${count} fois : « ${ancien.slice(0, 80)} ». Donne un extrait plus long pour qu’il soit unique.`
+          );
+        }
+        content = content.replace(ancien, () => nouveau);
+      }
+      if (ajouter_a_la_fin !== undefined) content = `${content.replace(/\s+$/, '')}\n\n${ajouter_a_la_fin}`;
+      const body = {
+        title: titre ?? p.title,
+        categoryId: categorie ? await categoryId(categorie) : p.category.id,
+        content,
+        baseUpdatedAt: version || p.updatedAt,
+      };
+      const { page: updated, unchanged } = await call('PUT', `/wiki/pages/${encodeURIComponent(p.slug)}`, body);
+      return {
+        modifiee: { ...pageView(updated), version: updated.updatedAt, lien: `${PUBLIC_URL}/wiki/p/${updated.slug}` },
+        ...(unchanged ? { remarque: 'Aucun changement : la page était déjà identique' } : {}),
+      };
+    })
+  );
+
+  server.registerTool(
+    'wiki_historique',
+    {
+      title: 'Historique d’une page du wiki',
+      description: 'Versions d’une page (date, auteur, taille). Avec version_id : contenu de cette ancienne version.',
+      inputSchema: {
+        page: z.string().min(1).describe('Identifiant de la page ou son titre'),
+        version_id: z.number().int().positive().optional().describe('Identifiant d’une version à lire'),
+      },
+      annotations: RO,
+    },
+    handler(async ({ page, version_id }) => {
+      const p = await resolvePage(page);
+      const base = `/wiki/pages/${encodeURIComponent(p.slug)}/revisions`;
+      if (version_id) {
+        const { revision: r } = await call('GET', `${base}/${version_id}`);
+        return { page: p.slug, version_id: r.id, date: r.createdAt, auteur: r.editedBy?.fullName || null, titre: r.title, contenu: r.content };
+      }
+      const { revisions } = await call('GET', base);
+      return {
+        page: p.slug,
+        titre: p.title,
+        versions: revisions.map((r) => ({ version_id: r.id, date: r.createdAt, auteur: r.editedBy?.fullName || null, titre: r.title, caracteres: r.length })),
+      };
     })
   );
 
