@@ -199,7 +199,6 @@ export default function Markdown({ source, toc = false }) {
   return (
     <>
       {toc && items.length >= 3 && <Toc items={items} />}
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div ref={ref} className="markdown" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
     </>
   );
