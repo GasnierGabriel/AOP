@@ -89,7 +89,8 @@ Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.goog
 
 ### Wiki
 
-Page **Wiki** pour tous les membres validés : des pages en **Markdown** rangées par catégorie
+Page **Wiki** pour tous les membres validés : des pages en **Markdown** (avec diagrammes **Mermaid** dans des blocs
+```` ```mermaid ````, chargés seulement quand une page en contient) rangées par catégorie
 (Administratif, Compétition, Communication, Technique, Trésorerie au départ ; le bureau peut en
 ajouter, renommer ou supprimer une catégorie vide). Chacun peut créer et modifier les pages ; chaque
 enregistrement garde une **version** consultable et restaurable dans l'historique. Si quelqu'un a
