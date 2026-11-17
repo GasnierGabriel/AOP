@@ -95,6 +95,29 @@ const taskView = (t) => ({
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Ancres des titres d'une page du wiki, calculées comme dans l'interface (frontend/src/components/Markdown.jsx)
+const headingAnchor = (text) =>
+  String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'section';
+
+function wikiSections(content) {
+  const seen = new Set(['root']);
+  const sections = [];
+  let fence = null;
+  for (const line of String(content || '').split('\n')) {
+    const f = line.match(/^\s*(```|~~~)/);
+    if (f) fence = fence === null ? f[1] : fence === f[1] ? null : fence;
+    const h = fence === null && line.match(/^ {0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (!h) continue;
+    const text = h[2].replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`~]/g, '').trim();
+    const base = headingAnchor(text);
+    let id = base;
+    for (let n = 2; seen.has(id); n += 1) id = `${base}-${n}`;
+    seen.add(id);
+    sections.push({ niveau: h[1].length, titre: text, ancre: `#${id}` });
+  }
+  return sections;
+}
+
 const sponsorView = (s) => ({
   id: s.id,
   nom: s.name,
@@ -391,7 +414,9 @@ function buildServer({ token, me }) {
     'wiki_lire',
     {
       title: 'Lire une page du wiki',
-      description: 'Contenu Markdown complet d’une page. Renvoie aussi « version », à repasser à wiki_modifier_page.',
+      description:
+        'Contenu Markdown complet d’une page, ses sections (titres et ancres) et sa « version », à repasser à wiki_modifier_page. ' +
+        'Lien vers une section : [texte](#ancre) dans la même page, ou [texte](/wiki/p/<page>#ancre) depuis une autre page.',
       inputSchema: { page: z.string().min(1).describe('Identifiant de la page (ex : reglement-fsuk) ou son titre') },
       annotations: RO,
     },
@@ -404,6 +429,7 @@ function buildServer({ token, me }) {
         nombre_de_versions: p.revisionCount,
         version: p.updatedAt,
         lien: `${PUBLIC_URL}/wiki/p/${p.slug}`,
+        sections: wikiSections(p.content),
         contenu: p.content,
       };
     })

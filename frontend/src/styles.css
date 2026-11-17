@@ -1577,6 +1577,14 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .markdown h1 { font-size: 1.5rem; }
 .markdown h2 { font-size: 1.25rem; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
 .markdown h3 { font-size: 1.05rem; }
+.markdown :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: 84px; } /* sous la barre de navigation fixe */
+.heading-anchor { margin-left: 0.4em; color: var(--muted, #5b6478); text-decoration: none; font-weight: 400; opacity: 0; transition: opacity 0.15s; }
+.markdown :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor, .heading-anchor:focus { opacity: 1; }
+.heading-anchor.copied::after { content: ' lien copié'; font-size: 0.7em; }
+@media (hover: none) { .heading-anchor { opacity: 0.45; } }
+.markdown-toc { display: inline-block; margin: 0 0 1.2em; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: #f7f8fb; font-size: 0.92rem; max-width: 100%; }
+.markdown-toc ol { margin: 6px 0 0; padding-left: 0; list-style: none; }
+.markdown-toc li { margin: 2px 0; }
 .markdown p, .markdown ul, .markdown ol, .markdown blockquote, .markdown pre, .markdown table { margin: 0 0 1em; }
 .markdown ul, .markdown ol { padding-left: 1.5em; }
 .markdown li + li { margin-top: 0.25em; }
