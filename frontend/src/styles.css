@@ -1586,6 +1586,9 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .markdown code { padding: 1px 5px; border-radius: 3px; background: #eef0f4; font-size: 0.88em; }
 .markdown pre { padding: 14px 16px; border-radius: var(--radius); background: var(--navy); color: #e8ecf5; overflow-x: auto; }
 .markdown pre code { padding: 0; background: none; color: inherit; }
+.mermaid-diagram { margin: 0 0 1em; padding: 12px; border: 1px solid #d9dce3; border-radius: var(--radius); background: #fff; overflow-x: auto; text-align: center; }
+.mermaid-diagram svg { max-width: 100%; height: auto; }
+.mermaid-error { margin: -0.6em 0 1em; color: #b3261e; font-size: 0.85em; }
 .markdown blockquote { padding: 10px 16px; border-left: 3px solid var(--red); background: var(--surface-2); color: var(--text); }
 .markdown blockquote > :last-child { margin-bottom: 0; }
 .markdown table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; }

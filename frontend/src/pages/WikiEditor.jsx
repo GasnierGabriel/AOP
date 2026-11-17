@@ -181,6 +181,13 @@ export default function WikiEditor() {
               <tr><td><code>`code`</code> · <code>```</code> bloc <code>```</code></td><td>Code</td></tr>
               <tr><td><code>&gt; texte</code></td><td>Encadré / citation</td></tr>
               <tr><td><code>| A | B |</code> puis <code>|---|---|</code></td><td>Tableau</td></tr>
+              <tr>
+                <td><code>```mermaid</code><br /><code>flowchart LR</code><br /><code>A[Idée] --&gt; B[Pièce]</code><br /><code>```</code></td>
+                <td>
+                  Diagramme <a href="https://mermaid.js.org/intro/" target="_blank" rel="noopener noreferrer">Mermaid</a> :
+                  organigramme, séquence, Gantt, états, classes…
+                </td>
+              </tr>
             </tbody>
           </table>
         </details>

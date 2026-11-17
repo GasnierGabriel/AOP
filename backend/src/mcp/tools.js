@@ -128,7 +128,7 @@ function buildServer({ token, me }) {
       instructions:
         "ERP de l'association ARECE (Formula Student, ECE Paris). Tu agis au nom du membre connecté, avec ses droits. " +
         'Tâches : Kanban de l’asso (À faire / En cours / Fait), avec pôle, priorité, échéance, responsables et commentaires. ' +
-          'Wiki : documentation de l’asso, pages Markdown rangées par catégorie, avec historique des versions ; lis une page avant de la modifier et préfère des remplacements ciblés. ' +
+          'Wiki : documentation de l’asso, pages Markdown (diagrammes Mermaid acceptés dans des blocs ```mermaid) rangées par catégorie, avec historique des versions ; lis une page avant de la modifier et préfère des remplacements ciblés. ' +
         (me.canSponsoring ? 'Sponsoring : suivi des partenaires (statut, rang, contacts, contreparties promises). ' : '') +
         "Aucune suppression n'est possible depuis l'assistant : elle se fait dans l'ERP (https://erp.arece.eu). " +
         'Appelle erp_reference pour connaître les pôles, les membres et les valeurs possibles avant de créer ou modifier. ' +
@@ -417,7 +417,7 @@ function buildServer({ token, me }) {
       inputSchema: {
         titre: z.string().min(1).max(200),
         categorie: z.string().min(1).describe('Nom de la catégorie (voir wiki_chercher)'),
-        contenu: z.string().max(100000).describe('Contenu en Markdown'),
+        contenu: z.string().max(100000).describe('Contenu en Markdown ; diagrammes possibles dans des blocs ```mermaid'),
       },
       annotations: RW,
     },
