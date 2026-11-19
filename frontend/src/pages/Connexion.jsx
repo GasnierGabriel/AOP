@@ -29,6 +29,31 @@ function useFormState() {
   return [state, run];
 }
 
+// Notifications par mail (relance quotidienne des tâches « À faire » en retard)
+function NotificationsSection({ initial }) {
+  const [taskReminders, setTaskReminders] = useState(initial?.taskReminders !== false);
+  const [state, run] = useFormState();
+  const toggle = (value) =>
+    run(async () => {
+      const { data } = await api.put('/auth/notifications', { taskReminders: value });
+      setTaskReminders(data.notifications.taskReminders);
+      return value ? 'Relances activées.' : 'Relances désactivées.';
+    }, 'Impossible d’enregistrer la préférence');
+  return (
+    <section className="card">
+      <h2>Notifications par mail</h2>
+      <label className="checkbox-line">
+        <input type="checkbox" checked={taskReminders} disabled={state.busy} onChange={(e) => toggle(e.target.checked)} />
+        <span>
+          Relance chaque matin si une de mes tâches est encore dans « À faire » alors que son échéance est passée
+        </span>
+      </label>
+      {state.error && <div className="alert alert-error section-alert">{state.error}</div>}
+      {state.success && <p className="muted small">{state.success}</p>}
+    </section>
+  );
+}
+
 // Informations de connexion : mail perso, compte Google ARECE lié (SSO), mot de passe
 export default function Connexion({ onSessionChange }) {
   const [params, setParams] = useSearchParams();
@@ -237,6 +262,8 @@ export default function Connexion({ onSessionChange }) {
           </form>
         </section>
       </div>
+
+      <NotificationsSection initial={me.notifications} />
 
       <AssistantsSection />
     </div>

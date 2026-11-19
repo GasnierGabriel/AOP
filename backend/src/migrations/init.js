@@ -367,6 +367,17 @@ CREATE TABLE IF NOT EXISTS task_comments (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS task_comments_task_idx ON task_comments (task_id, created_at);
+
+-- Notifications par mail : préférence de chaque membre, et journal des envois (un par personne, type et jour)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_task_reminders BOOLEAN NOT NULL DEFAULT TRUE;
+CREATE TABLE IF NOT EXISTS notification_log (
+  id       SERIAL PRIMARY KEY,
+  user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind     VARCHAR(40) NOT NULL,
+  sent_on  DATE NOT NULL,
+  sent_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, kind, sent_on)
+);
 `;
 
 // Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`

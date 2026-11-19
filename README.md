@@ -50,6 +50,16 @@ Activer le SSO Google :
 3. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`, puis redémarrer le backend.
    Le bouton Google reste masqué tant qu'ils sont vides.
 
+### Relance des tâches en retard (mail)
+
+Chaque matin à partir de 8 h (heure de Paris, `TASK_REMINDER_HOUR`), chaque responsable inscrit reçoit **un seul
+mail récapitulatif** de ses tâches encore dans « À faire » dont l'échéance est passée, tant qu'elles le restent.
+Les responsables sans compte ERP ne reçoivent rien. Chacun peut désactiver la relance dans *Informations de connexion
+→ Notifications par mail*. Un envoi par personne et par jour au maximum (table `notification_log`), même après un
+redémarrage. Nécessite l'envoi de mails (ci-dessous) ; `TASK_REMINDERS=off` dans `.env` coupe tout.
+Aperçu sans envoi : `docker compose -f docker-compose.prod.yml exec backend node src/scripts/task-reminders.js`
+(`--envoyer` pour envoyer tout de suite les relances du jour).
+
 ### Mot de passe oublié (envoi de mails)
 
 « Mot de passe oublié ? » sur la page de connexion envoie un lien de réinitialisation **à usage unique,

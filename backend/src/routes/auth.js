@@ -155,6 +155,7 @@ router.get('/me', authenticateToken, async (req, res) => {
   };
   // Ancien compte créé avec une adresse ARECE / ECE : il doit passer à un mail perso
   user.emailNeedsUpdate = isBlockedEmail(req.user.email);
+  user.notifications = { taskReminders: req.user.notify_task_reminders !== false };
   const permissions = {
     canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
     canAccessSponsoring: await hasSponsoringAccess(req.user),
@@ -201,6 +202,14 @@ router.put('/email', authenticateToken, async (req, res) => {
     if (err.code === '23505') return res.status(409).json({ error: 'Un compte existe déjà avec cet email' });
     throw err;
   }
+});
+
+// PUT /api/auth/notifications { taskReminders } — préférences de notification par mail
+router.put('/notifications', authenticateToken, async (req, res) => {
+  const { taskReminders } = req.body || {};
+  if (typeof taskReminders !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
+  await query('UPDATE users SET notify_task_reminders = $2 WHERE id = $1', [req.user.id, taskReminders]);
+  res.json({ notifications: { taskReminders } });
 });
 
 // PUT /api/auth/password { currentPassword, newPassword } — déconnecte les autres sessions
