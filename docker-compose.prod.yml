@@ -47,6 +47,9 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-ERP ARECE}
       SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-true}
+      # Relance quotidienne des tâches « À faire » en retard (TASK_REMINDERS=off pour couper)
+      TASK_REMINDERS: ${TASK_REMINDERS:-on}
+      TASK_REMINDER_HOUR: ${TASK_REMINDER_HOUR:-8}
     depends_on:
       postgres:
         condition: service_healthy
