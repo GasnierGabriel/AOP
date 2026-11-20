@@ -371,6 +371,7 @@ CREATE INDEX IF NOT EXISTS task_comments_task_idx ON task_comments (task_id, cre
 -- Notifications par mail : préférence de chaque membre, et journal des envois (un par personne, type et jour)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_task_reminders BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_weekly_digest BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_task_assigned BOOLEAN NOT NULL DEFAULT TRUE;
 CREATE TABLE IF NOT EXISTS notification_log (
   id       SERIAL PRIMARY KEY,
   user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

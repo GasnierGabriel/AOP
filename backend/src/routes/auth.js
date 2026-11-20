@@ -158,6 +158,7 @@ router.get('/me', authenticateToken, async (req, res) => {
   user.notifications = {
     taskReminders: req.user.notify_task_reminders !== false,
     weeklyDigest: req.user.notify_weekly_digest !== false,
+    taskAssigned: req.user.notify_task_assigned !== false,
   };
   const permissions = {
     canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
@@ -207,20 +208,21 @@ router.put('/email', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/auth/notifications { taskReminders?, weeklyDigest? } — préférences de notification par mail
+// PUT /api/auth/notifications { taskReminders?, weeklyDigest?, taskAssigned? } — préférences de notification par mail
+const NOTIFICATION_COLUMNS = { taskReminders: 'notify_task_reminders', weeklyDigest: 'notify_weekly_digest', taskAssigned: 'notify_task_assigned' };
 router.put('/notifications', authenticateToken, async (req, res) => {
-  const { taskReminders, weeklyDigest } = req.body || {};
-  const valid = (v) => v === undefined || typeof v === 'boolean';
-  if (!valid(taskReminders) || !valid(weeklyDigest) || (taskReminders === undefined && weeklyDigest === undefined)) {
+  const body = req.body || {};
+  const keys = Object.keys(NOTIFICATION_COLUMNS).filter((k) => body[k] !== undefined);
+  if (keys.length === 0 || keys.some((k) => typeof body[k] !== 'boolean')) {
     return res.status(400).json({ error: 'Préférence invalide' });
   }
   const { rows } = await query(
-    `UPDATE users SET notify_task_reminders = COALESCE($2, notify_task_reminders),
-                      notify_weekly_digest = COALESCE($3, notify_weekly_digest)
-      WHERE id = $1 RETURNING notify_task_reminders, notify_weekly_digest`,
-    [req.user.id, taskReminders ?? null, weeklyDigest ?? null]
+    `UPDATE users SET ${keys.map((k, i) => `${NOTIFICATION_COLUMNS[k]} = $${i + 2}`).join(', ')}
+      WHERE id = $1 RETURNING ${Object.values(NOTIFICATION_COLUMNS).join(', ')}`,
+    [req.user.id, ...keys.map((k) => body[k])]
   );
-  res.json({ notifications: { taskReminders: rows[0].notify_task_reminders, weeklyDigest: rows[0].notify_weekly_digest } });
+  const notifications = Object.fromEntries(Object.entries(NOTIFICATION_COLUMNS).map(([k, col]) => [k, rows[0][col]]));
+  res.json({ notifications });
 });
 
 // PUT /api/auth/password { currentPassword, newPassword } — déconnecte les autres sessions

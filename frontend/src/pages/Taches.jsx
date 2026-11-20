@@ -103,6 +103,17 @@ export default function Taches({ session, onSessionChange }) {
     loadAll();
   }, []);
 
+  // Lien direct vers une tâche (?tache=ID, par exemple depuis un mail de notification)
+  const linkedTaskId = Number(params.get('tache')) || null;
+  useEffect(() => {
+    if (!linkedTaskId || loading) return;
+    const task = tasks.find((t) => t.id === linkedTaskId);
+    if (task) setDialog(task);
+    else setBoardError("Cette tâche n'existe plus.");
+    updateParams({ tache: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedTaskId, loading]);
+
   const myId = session?.user.id;
 
   // Responsables sans compte, proposés dans le filtre

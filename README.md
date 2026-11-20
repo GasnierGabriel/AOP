@@ -66,6 +66,11 @@ celles sans responsable). Aucun mail aux membres sans tâche (hors bureau), aux 
 non validés (ces exclusions valent aussi pour la relance quotidienne). Désactivable au même endroit. Aperçu :
 `node src/scripts/task-reminders.js --recap` (`--recap --envoyer` pour l'envoyer tout de suite).
 
+**Assignation** : quand un membre (ou son assistant IA) ajoute quelqu'un comme responsable d'une tâche, à la
+création ou en modification, le nouveau responsable reçoit aussitôt un mail avec la tâche et un lien qui l'ouvre
+(`/taches?tache=<id>`). Pas de mail si on s'assigne soi-même, pour une tâche déjà faite, ni aux alumni, membres
+d'honneur et comptes non validés. Désactivable au même endroit.
+
 ### Mot de passe oublié (envoi de mails)
 
 « Mot de passe oublié ? » sur la page de connexion envoie un lien de réinitialisation **à usage unique,

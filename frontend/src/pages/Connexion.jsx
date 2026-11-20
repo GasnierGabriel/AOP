@@ -34,6 +34,7 @@ function NotificationsSection({ initial }) {
   const [prefs, setPrefs] = useState({
     taskReminders: initial?.taskReminders !== false,
     weeklyDigest: initial?.weeklyDigest !== false,
+    taskAssigned: initial?.taskAssigned !== false,
   });
   const [state, run] = useFormState();
   const toggle = (key, value) =>
@@ -64,6 +65,15 @@ function NotificationsSection({ initial }) {
           onChange={(e) => toggle('weeklyDigest', e.target.checked)}
         />
         <span>Récap le lundi matin de mes tâches en cours (et de toutes les tâches pour le bureau)</span>
+      </label>
+      <label className="checkbox-line">
+        <input
+          type="checkbox"
+          checked={prefs.taskAssigned}
+          disabled={state.busy}
+          onChange={(e) => toggle('taskAssigned', e.target.checked)}
+        />
+        <span>Mail quand quelqu'un m'assigne une tâche</span>
       </label>
       {state.error && <div className="alert alert-error section-alert">{state.error}</div>}
       {state.success && <p className="muted small">{state.success}</p>}

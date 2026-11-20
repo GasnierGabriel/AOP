@@ -17,7 +17,7 @@ if (process.env.NODE_ENV === 'production' && JWT_SECRET.startsWith('dev_')) {
 const USER_FIELDS = [
   'id', 'email', 'full_name', 'linkedin_url', 'status',
   'is_bureau', 'level', 'promo', 'created_at', 'updated_at',
-  'google_email', 'google_linked_at', 'notify_task_reminders', 'notify_weekly_digest',
+  'google_email', 'google_linked_at', 'notify_task_reminders', 'notify_weekly_digest', 'notify_task_assigned',
 ];
 
 // Adresses de l'école / de l'asso refusées comme identifiant : on demande un mail perso,

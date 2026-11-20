@@ -3,6 +3,7 @@
 const express = require('express');
 const { query, pool } = require('../db');
 const { authenticateToken, requireMember, requireBureau } = require('../auth');
+const { notifyTaskAssignedLater } = require('../notifications/taskAssigned');
 
 const router = express.Router();
 router.use(authenticateToken, requireMember);
@@ -159,7 +160,10 @@ async function parseTask(body = {}, { partial = false } = {}) {
   return { values, assignees };
 }
 
+// Remplace les responsables ; renvoie les membres nouvellement ajoutés (pour le mail d'assignation)
 async function saveAssignees(client, taskId, assignees) {
+  const { rows: before } = await client.query('SELECT user_id FROM task_assignees WHERE task_id = $1 AND user_id IS NOT NULL', [taskId]);
+  const previous = new Set(before.map((r) => r.user_id));
   await client.query('DELETE FROM task_assignees WHERE task_id = $1', [taskId]);
   for (const [position, a] of assignees.entries()) {
     await client.query('INSERT INTO task_assignees (task_id, user_id, name, position) VALUES ($1, $2, $3, $4)', [
@@ -169,6 +173,7 @@ async function saveAssignees(client, taskId, assignees) {
       position,
     ]);
   }
+  return assignees.map((a) => a.userId).filter((id) => id && !previous.has(id));
 }
 
 async function inTransaction(fn) {
@@ -219,15 +224,17 @@ router.post('/', async (req, res) => {
   values.created_by = req.user.id;
   values.updated_by = req.user.id;
   const columns = Object.keys(values);
+  let added = [];
   const id = await inTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO tasks (${columns.join(', ')}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`,
       columns.map((c) => values[c])
     );
-    if (assignees) await saveAssignees(client, rows[0].id, assignees);
+    if (assignees) added = await saveAssignees(client, rows[0].id, assignees);
     return rows[0].id;
   });
   await sendTask(res, id, req.user, 201);
+  notifyTaskAssignedLater(id, added, req.user);
 });
 
 // PATCH /api/tasks/:id — modification ou déplacement (champs présents uniquement)
@@ -239,6 +246,7 @@ router.patch('/:id', async (req, res) => {
   const columns = Object.keys(values); // colonnes issues de la liste blanche de parseTask
   if (columns.length === 0 && !assignees) return res.status(400).json({ error: 'Rien à modifier' });
 
+  let added = [];
   const found = await inTransaction(async (client) => {
     // Date de réalisation : posée en passant à « Fait », retirée en sortant de « Fait »
     const completed = values.status === undefined ? '' : ", completed_at = CASE WHEN $2 = 'done' THEN COALESCE(completed_at, NOW()) ELSE NULL END";
@@ -253,11 +261,12 @@ router.patch('/:id', async (req, res) => {
       `UPDATE tasks SET ${sets}updated_by = $${params.length + 1}, updated_at = NOW()${completed} WHERE id = $1`,
       [...params, req.user.id]
     );
-    if (rowCount > 0 && assignees) await saveAssignees(client, id, assignees);
+    if (rowCount > 0 && assignees) added = await saveAssignees(client, id, assignees);
     return rowCount > 0;
   });
   if (!found) return res.status(404).json({ error: 'Tâche introuvable' });
   await sendTask(res, id, req.user);
+  notifyTaskAssignedLater(id, added, req.user);
 });
 
 // DELETE /api/tasks/:id — par son auteur ou le bureau
