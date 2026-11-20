@@ -111,7 +111,6 @@ export default function Taches({ session, onSessionChange }) {
     if (task) setDialog(task);
     else setBoardError("Cette tâche n'existe plus.");
     updateParams({ tache: null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedTaskId, loading]);
 
   const myId = session?.user.id;
