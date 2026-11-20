@@ -12,7 +12,7 @@ const sponsoringRoutes = require('./routes/sponsoring');
 const wikiRoutes = require('./routes/wiki');
 const taskRoutes = require('./routes/tasks');
 const { mountMcp, mcpApiRouter } = require('./mcp');
-const { startTaskReminderScheduler } = require('./notifications/taskReminders');
+const { startNotificationScheduler } = require('./notifications/scheduler');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
@@ -80,7 +80,7 @@ waitForDatabase()
   .then(() => {
     console.log('✅ Schéma de base à jour');
     app.listen(PORT, () => console.log(`🚀 API ARECE sur le port ${PORT}`));
-    startTaskReminderScheduler();
+    startNotificationScheduler();
   })
   .catch((err) => {
     console.error('❌ Démarrage impossible (PostgreSQL ou migration)', err);

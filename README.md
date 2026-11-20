@@ -60,6 +60,12 @@ redémarrage. Nécessite l'envoi de mails (ci-dessous) ; `TASK_REMINDERS=off` da
 Aperçu sans envoi : `docker compose -f docker-compose.prod.yml exec backend node src/scripts/task-reminders.js`
 (`--envoyer` pour envoyer tout de suite les relances du jour).
 
+**Récap du lundi** (même heure) : chaque membre actif ayant des tâches « À faire » ou « En cours » reçoit la liste
+de ses tâches ; les membres actifs du bureau reçoivent en plus toutes les tâches ouvertes, par responsable (et
+celles sans responsable). Aucun mail aux membres sans tâche (hors bureau), aux alumni, membres d'honneur ni comptes
+non validés (ces exclusions valent aussi pour la relance quotidienne). Désactivable au même endroit. Aperçu :
+`node src/scripts/task-reminders.js --recap` (`--recap --envoyer` pour l'envoyer tout de suite).
+
 ### Mot de passe oublié (envoi de mails)
 
 « Mot de passe oublié ? » sur la page de connexion envoie un lien de réinitialisation **à usage unique,
