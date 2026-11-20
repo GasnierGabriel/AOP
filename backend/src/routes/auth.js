@@ -155,7 +155,10 @@ router.get('/me', authenticateToken, async (req, res) => {
   };
   // Ancien compte créé avec une adresse ARECE / ECE : il doit passer à un mail perso
   user.emailNeedsUpdate = isBlockedEmail(req.user.email);
-  user.notifications = { taskReminders: req.user.notify_task_reminders !== false };
+  user.notifications = {
+    taskReminders: req.user.notify_task_reminders !== false,
+    weeklyDigest: req.user.notify_weekly_digest !== false,
+  };
   const permissions = {
     canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
     canAccessSponsoring: await hasSponsoringAccess(req.user),
@@ -204,12 +207,20 @@ router.put('/email', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/auth/notifications { taskReminders } — préférences de notification par mail
+// PUT /api/auth/notifications { taskReminders?, weeklyDigest? } — préférences de notification par mail
 router.put('/notifications', authenticateToken, async (req, res) => {
-  const { taskReminders } = req.body || {};
-  if (typeof taskReminders !== 'boolean') return res.status(400).json({ error: 'Préférence invalide' });
-  await query('UPDATE users SET notify_task_reminders = $2 WHERE id = $1', [req.user.id, taskReminders]);
-  res.json({ notifications: { taskReminders } });
+  const { taskReminders, weeklyDigest } = req.body || {};
+  const valid = (v) => v === undefined || typeof v === 'boolean';
+  if (!valid(taskReminders) || !valid(weeklyDigest) || (taskReminders === undefined && weeklyDigest === undefined)) {
+    return res.status(400).json({ error: 'Préférence invalide' });
+  }
+  const { rows } = await query(
+    `UPDATE users SET notify_task_reminders = COALESCE($2, notify_task_reminders),
+                      notify_weekly_digest = COALESCE($3, notify_weekly_digest)
+      WHERE id = $1 RETURNING notify_task_reminders, notify_weekly_digest`,
+    [req.user.id, taskReminders ?? null, weeklyDigest ?? null]
+  );
+  res.json({ notifications: { taskReminders: rows[0].notify_task_reminders, weeklyDigest: rows[0].notify_weekly_digest } });
 });
 
 // PUT /api/auth/password { currentPassword, newPassword } — déconnecte les autres sessions

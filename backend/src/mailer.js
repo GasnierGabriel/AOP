@@ -43,9 +43,23 @@ async function sendMail({ to, subject, text, html }) {
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+// Bloc de contenu : un texte (paragraphe), { heading } (intertitre) ou { item, note, alert } (ligne de liste)
+const blockText = (b) =>
+  typeof b === 'string' ? b : b.heading ? `\n${b.heading.toUpperCase()}` : `• ${b.item}${b.note ? ` (${b.note})` : ''}`;
+function blockHtml(b) {
+  if (typeof b === 'string') return `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${escapeHtml(b)}</p>`;
+  if (b.heading) {
+    return `<h2 style="margin:22px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:1px;color:#000f2e;border-bottom:1px solid #d9dce3;padding-bottom:4px">${escapeHtml(b.heading)}</h2>`;
+  }
+  const note = b.note
+    ? ` <span style="color:${b.alert ? '#e6172f' : '#5b6478'};font-size:13px">· ${escapeHtml(b.note)}</span>`
+    : '';
+  return `<p style="margin:0 0 6px;font-size:14px;line-height:1.45;padding-left:14px;text-indent:-10px">• ${escapeHtml(b.item)}${note}</p>`;
+}
+
 // Gabarit commun aux mails de l'ERP, aux couleurs d'arece.eu (bleu nuit, rouge)
 function layout({ title, paragraphs, button, footer }) {
-  const text = [title, '', ...paragraphs, '', button ? `${button.label} : ${button.url}` : '', '', footer || '']
+  const text = [title, '', ...paragraphs.map(blockText), '', button ? `${button.label} : ${button.url}` : '', '', footer || '']
     .join('\n')
     .trim();
   const html = `<!doctype html>
@@ -55,7 +69,7 @@ function layout({ title, paragraphs, button, footer }) {
 <tr><td style="background:#000f2e;padding:18px 24px;color:#ffffff;font-weight:bold;letter-spacing:4px;font-size:18px">ARECE</td></tr>
 <tr><td style="padding:28px 24px 8px">
 <h1 style="margin:0 0 16px;font-size:20px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(title)}</h1>
-${paragraphs.map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${escapeHtml(p)}</p>`).join('\n')}
+${paragraphs.map(blockHtml).join('\n')}
 ${
   button
     ? `<p style="margin:24px 0"><a href="${escapeHtml(button.url)}" style="display:inline-block;background:#000f2e;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 22px;text-transform:uppercase;letter-spacing:1px;font-size:14px">${escapeHtml(button.label)}</a></p>

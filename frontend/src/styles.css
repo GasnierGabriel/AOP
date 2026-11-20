@@ -1846,5 +1846,5 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .consent-card code { overflow-wrap: anywhere; }
 
 /* Case à cocher sur une ligne avec son libellé */
-.checkbox-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; line-height: 1.45; }
+.checkbox-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; line-height: 1.45; margin-bottom: 10px; }
 .checkbox-line input { margin-top: 3px; width: auto; flex: none; }
