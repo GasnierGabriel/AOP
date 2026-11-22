@@ -161,7 +161,7 @@ a:hover {
   padding: 32px 16px;
   background:
     linear-gradient(rgba(0, 15, 46, 0.82), rgba(0, 15, 46, 0.6) 45%, rgba(0, 32, 101, 0.92)),
-    url('https://arece.eu/images/2026-website-picture/2026/ads_dv_hero_2026.jpg') center / cover no-repeat,
+    url('/login-hero.webp') center / cover no-repeat, /* photo du site arece.eu, servie par l'ERP (WebP, 2x plus léger) */
     var(--navy);
 }
 .auth-logo {
