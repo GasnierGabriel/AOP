@@ -5,7 +5,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "migrate": "node src/migrations/init.js"
+    "migrate": "node src/migrations/init.js",
+    "test": "node --test",
+    "gallery:worker": "node src/gallery/worker.js",
+    "gallery:full-sync": "node src/scripts/gallery-full-sync.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -18,7 +21,10 @@
     "express-rate-limit": "^7.5.0",
     "nodemailer": "^6.9.14",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "google-auth-library": "^9.15.1",
+    "sharp": "^0.34.4",
+    "heic-convert": "^2.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
