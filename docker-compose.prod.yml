@@ -1,6 +1,16 @@
 # Production : docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 # Seul Caddy (web) est exposé ; Postgres et l'API restent sur le réseau Docker interne.
 
+# Réglages de la galerie, communs à l'API et au service gallery-worker
+x-gallery-env: &gallery-env
+  GALLERY_SHARED_DRIVE_ID: ${GALLERY_SHARED_DRIVE_ID:-}
+  GALLERY_SYNC_INTERVAL_MINUTES: ${GALLERY_SYNC_INTERVAL_MINUTES:-10}
+  GALLERY_URL_SIGNING_SECRET: ${GALLERY_URL_SIGNING_SECRET:-}
+  GALLERY_THUMBS_DIR: /data/gallery/thumbs
+  JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env}
+  # Clé JSON du compte de service, déposée dans ./secrets/ sur le serveur (jamais commitée)
+  GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google/galerie-drive.json
+
 x-logging: &logging
   driver: json-file
   options:
@@ -50,6 +60,29 @@ services:
       # Relance quotidienne des tâches « À faire » en retard (TASK_REMINDERS=off pour couper)
       TASK_REMINDERS: ${TASK_REMINDERS:-on}
       TASK_REMINDER_HOUR: ${TASK_REMINDER_HOUR:-8}
+      # Galerie photos (facultatif : désactivée tant que GALLERY_SHARED_DRIVE_ID est vide). Voir README, « Galerie ».
+      <<: *gallery-env
+    volumes:
+      - gallery_thumbs:/data/gallery/thumbs:ro
+      - ./secrets:/run/secrets/google:ro,z
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Synchro du Drive partagé et miniatures de la galerie (même image que l'API, autre commande)
+  gallery-worker:
+    build: ./backend
+    command: ["npm", "run", "gallery:worker"]
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 1536m # une photo HEIC décodée prend de la place : jamais au détriment de l'ERP
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://arece:${POSTGRES_PASSWORD}@postgres:5432/arece_db
+      <<: *gallery-env
+    volumes:
+      - gallery_thumbs:/data/gallery/thumbs
+      - ./secrets:/run/secrets/google:ro,z
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,5 +111,6 @@ services:
 
 volumes:
   postgres_data:
+  gallery_thumbs: # miniatures (recalculables depuis le Drive : hors sauvegardes)
   caddy_data:
   caddy_config:

@@ -21,6 +21,8 @@ const AutoriserAssistant = lazy(() => import('./pages/AutoriserAssistant'));
 const Wiki = lazy(() => import('./pages/Wiki'));
 const WikiPage = lazy(() => import('./pages/WikiPage'));
 const WikiEditor = lazy(() => import('./pages/WikiEditor'));
+const Galerie = lazy(() => import('./pages/Galerie'));
+const GalerieAlbum = lazy(() => import('./pages/GalerieAlbum'));
 
 // Titre de l'onglet selon la page (les pages du wiki le précisent ensuite avec leur propre titre)
 const PAGE_TITLES = [
@@ -36,6 +38,7 @@ const PAGE_TITLES = [
   [/^\/sponsoring/, 'Sponsoring'],
   [/^\/gestion/, 'Gestion'],
   [/^\/wiki/, 'Wiki'],
+  [/^\/galerie/, 'Galerie'],
   [/^\/autoriser-assistant/, 'Autoriser un assistant'],
 ];
 function PageTitle() {
@@ -73,6 +76,7 @@ function Navbar({ session, onLogout }) {
   const isBureau = session?.user.isBureau;
   const isMember = session?.permissions.canViewDirectory;
   const canSponsoring = session?.permissions.canAccessSponsoring;
+  const canGallery = session?.permissions.canViewGallery;
   const pending = session?.permissions.pendingProspects || 0;
   const urgentCounterparts = (canSponsoring && session?.permissions.urgentCounterparts) || 0;
   const myUrgentTasks = session?.permissions.myUrgentTasks || 0;
@@ -141,6 +145,7 @@ function Navbar({ session, onLogout }) {
             </NavLink>
           )}
           {isMember && <NavLink to="/wiki">Wiki</NavLink>}
+          {canGallery && <NavLink to="/galerie">Galerie</NavLink>}
           <NavLink to="/profile">Mon profil</NavLink>
           {canSponsoring && (
             <NavLink to="/sponsoring">
@@ -214,6 +219,11 @@ function BureauRoute({ session, children }) {
 // Wiki : tous les membres validés (pas les prospects)
 function MemberRoute({ session, children }) {
   return session?.permissions.canViewDirectory ? children : <Navigate to="/annuaire" replace />;
+}
+
+// Galerie : bureau, actifs, alumni, honoraires L2 (droit calculé par l'API)
+function GalleryRoute({ session, children }) {
+  return session?.permissions.canViewGallery ? children : <Navigate to="/annuaire" replace />;
 }
 
 // Sponsoring : bureau ou membres tagués « Sponsoring » (droit calculé par l'API)
@@ -327,6 +337,8 @@ export default function App() {
                   path="/wiki/p/:slug/modifier"
                   element={privateEl(<MemberRoute session={session}><WikiEditor /></MemberRoute>)}
                 />
+                <Route path="/galerie" element={privateEl(<GalleryRoute session={session}><Galerie /></GalleryRoute>)} />
+                <Route path="/galerie/:albumId" element={privateEl(<GalleryRoute session={session}><GalerieAlbum /></GalleryRoute>)} />
                 <Route
                   path="/sponsoring"
                   element={privateEl(

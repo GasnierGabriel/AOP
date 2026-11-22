@@ -1,3 +1,11 @@
+# Réglages de la galerie (dev) : GALLERY_SHARED_DRIVE_ID et la clé ./secrets/galerie-drive.json pour la tester
+x-gallery-env: &gallery-env
+  GALLERY_SHARED_DRIVE_ID: ${GALLERY_SHARED_DRIVE_ID:-}
+  GALLERY_SYNC_INTERVAL_MINUTES: ${GALLERY_SYNC_INTERVAL_MINUTES:-10}
+  GALLERY_THUMBS_DIR: /data/gallery/thumbs
+  JWT_SECRET: dev_secret_key_change_in_production
+  GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google/galerie-drive.json
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -34,8 +42,28 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_WORKSPACE_DOMAIN: arece.eu
+      <<: *gallery-env
     volumes:
       - ./backend/src:/app/src
+      - gallery_thumbs:/data/gallery/thumbs:ro
+      - ./secrets:/run/secrets/google:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Galerie : synchro du Drive partagé et miniatures (inactif tant que GALLERY_SHARED_DRIVE_ID est vide)
+  gallery-worker:
+    build: ./backend
+    restart: unless-stopped
+    command: npm run gallery:worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://arece:arece_dev_password@postgres:5432/arece_db
+      <<: *gallery-env
+    volumes:
+      - ./backend/src:/app/src
+      - gallery_thumbs:/data/gallery/thumbs
+      - ./secrets:/run/secrets/google:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,3 +88,4 @@ services:
 
 volumes:
   postgres_data:
+  gallery_thumbs:
