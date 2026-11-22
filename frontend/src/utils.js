@@ -24,3 +24,9 @@ export function initials(fullName = '') {
     .map((part) => part[0].toUpperCase())
     .join('');
 }
+
+// Touche Entrée qui valide une composition IME (accents, japonais, emoji…) : ne doit ni envoyer ni ajouter.
+// keyCode 229 : repli pour Safari, qui envoie keydown après compositionend.
+export function isComposing(e) {
+  return e.nativeEvent?.isComposing || e.isComposing || e.keyCode === 229;
+}

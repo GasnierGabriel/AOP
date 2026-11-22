@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import Markdown from '../components/Markdown';
+import { useConfirm } from '../components/ConfirmProvider';
 
 const TEMPLATE = `## Objectif
 
@@ -19,7 +20,13 @@ Pourquoi ce process existe, à qui il sert.
 `;
 
 // Création (/wiki/nouveau) ou modification (/wiki/p/:slug/modifier) d'une page
+const EDITOR_TABS = [
+  ['write', 'Écrire'],
+  ['preview', 'Aperçu'],
+];
+
 export default function WikiEditor() {
+  const confirm = useConfirm();
   const { slug } = useParams();
   const isEdit = Boolean(slug);
   const navigate = useNavigate();
@@ -101,13 +108,25 @@ export default function WikiEditor() {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
-  const cancel = () => {
-    if (dirty && !window.confirm('Abandonner les modifications non enregistrées ?')) return;
+  // Flèches / Début / Fin dans la barre d'onglets : change d'onglet et y place le focus
+  const onTabKey = (e) => {
+    const keys = EDITOR_TABS.map(([key]) => key);
+    const index = keys.indexOf(tab);
+    const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: keys.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const key = keys[(next + keys.length) % keys.length];
+    setTab(key);
+    document.getElementById(`editor-tab-${key}`)?.focus();
+  };
+
+  const cancel = async () => {
+    if (dirty && !(await confirm('Abandonner les modifications non enregistrées ?', { title: 'Modifications non enregistrées', confirmLabel: 'Abandonner', danger: true }))) return;
     initial.current = form;
     navigate(isEdit ? `/wiki/p/${slug}` : '/wiki');
   };
 
-  if (loading) return <div className="loading">Chargement…</div>;
+  if (loading) return <div className="loading" role="status">Chargement…</div>;
   if (error && !initial.current) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (
@@ -143,18 +162,33 @@ export default function WikiEditor() {
           </label>
         </div>
 
-        <div className="editor-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === 'write'} className={tab === 'write' ? 'is-active' : ''} onClick={() => setTab('write')}>
-            Écrire
-          </button>
-          <button type="button" role="tab" aria-selected={tab === 'preview'} className={tab === 'preview' ? 'is-active' : ''} onClick={() => setTab('preview')}>
-            Aperçu
-          </button>
+        <div className="editor-tabs">
+          {/* Onglets accessibles : flèches gauche/droite pour passer de l'un à l'autre, Tab pour aller au contenu */}
+          <div role="tablist" aria-label="Mode d'édition" className="editor-tablist" onKeyDown={onTabKey}>
+            {EDITOR_TABS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`editor-tab-${key}`}
+                aria-selected={tab === key}
+                aria-controls={`editor-panel-${key}`}
+                tabIndex={tab === key ? 0 : -1}
+                className={tab === key ? 'is-active' : ''}
+                onClick={() => setTab(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <span className="muted small editor-hint">Markdown · Ctrl+S pour enregistrer</span>
         </div>
 
         {tab === 'write' ? (
           <textarea
+            id="editor-panel-write"
+            role="tabpanel"
+            aria-labelledby="editor-tab-write"
             className="editor-textarea"
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -164,7 +198,7 @@ export default function WikiEditor() {
             spellCheck
           />
         ) : (
-          <div className="editor-preview">
+          <div className="editor-preview" id="editor-panel-preview" role="tabpanel" aria-labelledby="editor-tab-preview" tabIndex={0}>
             <Markdown source={form.content} />
           </div>
         )}

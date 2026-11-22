@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { errorMessage } from '../api';
-import useModal from '../useModal';
+import Modal from './Modal';
 
 const normalize = (text) => text.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -9,8 +9,6 @@ export default function DeleteMemberDialog({ member, onConfirm, onClose }) {
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  const modalRef = useModal({ onClose, busy });
 
   const matches = normalize(typed) === normalize(member.fullName);
 
@@ -31,48 +29,46 @@ export default function DeleteMemberDialog({ member, onConfirm, onClose }) {
   const tags = member.tags?.length || 0;
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal" role="alertdialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-desc">
-        <h2 id="delete-title">Supprimer le compte</h2>
-        <div id="delete-desc" className="delete-warning">
-          <p>
-            Le compte de <strong>{member.fullName}</strong> ({member.email}) sera supprimé <strong>définitivement</strong>,
-            avec :
-          </p>
-          <ul>
-            <li>son profil (bio, réalisations) et son historique de rôles ;</li>
-            <li>
-              {competitions} compétition{competitions > 1 ? 's' : ''} et {tags} tag{tags > 1 ? 's' : ''} attribué
-              {tags > 1 ? 's' : ''} ;
-            </li>
-            <li>ses sessions en cours (déconnexion immédiate).</li>
-          </ul>
-          <p>Cette action est irréversible (seule la sauvegarde quotidienne de la base permettrait de le retrouver).</p>
-        </div>
-
-        <form className="form" onSubmit={handleSubmit}>
-          <label>
-            Pour confirmer, tape le nom complet : {member.fullName}
-            <input
-              autoFocus
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder={member.fullName}
-              autoComplete="off"
-            />
-          </label>
-          {error && <div role="alert" className="alert alert-error">{error}</div>}
-          <div className="modal-actions">
-            <span className="spacer" />
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-              Annuler
-            </button>
-            <button type="submit" className="btn btn-danger-solid" disabled={!matches || busy}>
-              {busy ? 'Suppression…' : 'Supprimer définitivement'}
-            </button>
-          </div>
-        </form>
+    <Modal onClose={onClose} busy={busy} role="alertdialog" labelledBy="delete-title" describedBy="delete-desc">
+      <h2 id="delete-title">Supprimer le compte</h2>
+      <div id="delete-desc" className="delete-warning">
+        <p>
+          Le compte de <strong>{member.fullName}</strong> ({member.email}) sera supprimé <strong>définitivement</strong>,
+          avec :
+        </p>
+        <ul>
+          <li>son profil (bio, réalisations) et son historique de rôles ;</li>
+          <li>
+            {competitions} compétition{competitions > 1 ? 's' : ''} et {tags} tag{tags > 1 ? 's' : ''} attribué
+            {tags > 1 ? 's' : ''} ;
+          </li>
+          <li>ses sessions en cours (déconnexion immédiate).</li>
+        </ul>
+        <p>Cette action est irréversible (seule la sauvegarde quotidienne de la base permettrait de le retrouver).</p>
       </div>
-    </div>
+
+      <form className="form" onSubmit={handleSubmit}>
+        <label>
+          Pour confirmer, tape le nom complet : {member.fullName}
+          <input
+            data-autofocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={member.fullName}
+            autoComplete="off"
+          />
+        </label>
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
+        <div className="modal-actions">
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
+            Annuler
+          </button>
+          <button type="submit" className="btn btn-danger-solid" disabled={!matches || busy}>
+            {busy ? 'Suppression…' : 'Supprimer définitivement'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

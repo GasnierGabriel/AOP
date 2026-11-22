@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import { formatDate } from '../utils';
-import useModal from '../useModal';
+import Modal from '../components/Modal';
+import { useConfirm } from '../components/ConfirmProvider';
 
 // Ligne de liste : titre, catégorie (si mélangées), extrait, dernière modification
 export function WikiPageItem({ page, showCategory }) {
@@ -35,7 +36,7 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
     description: category?.description || '',
   });
   const [busy, setBusy] = useState(false);
-  const modalRef = useModal({ onClose, busy });
+  const confirm = useConfirm();
   const [error, setError] = useState('');
 
   const run = async (action, fallback) => {
@@ -59,8 +60,8 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
     }, "Impossible d'enregistrer la catégorie");
   };
 
-  const remove = () => {
-    if (!window.confirm(`Supprimer la catégorie « ${category.name} » ?`)) return;
+  const remove = async () => {
+    if (!(await confirm(`Supprimer la catégorie « ${category.name} » ?`, { confirmLabel: 'Supprimer', danger: true }))) return;
     run(async () => {
       await api.delete(`/wiki/categories/${category.id}`);
       onDeleted();
@@ -68,47 +69,45 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal" role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="category-title">
-        <h2 id="category-title">{isEdit ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h2>
-        <form className="form" onSubmit={save}>
-          <div className="form-grid">
-            <label className="span-2">
-              Nom
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} required autoFocus />
-            </label>
-            <label>
-              Emoji
-              <input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} maxLength={8} placeholder="ex : 🔧" />
-            </label>
-          </div>
-          <label>
-            Description
-            <input
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              maxLength={300}
-              placeholder="Ce qu'on trouve dans cette catégorie"
-            />
+    <Modal onClose={onClose} busy={busy} labelledBy="category-title">
+      <h2 id="category-title">{isEdit ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h2>
+      <form className="form" onSubmit={save}>
+        <div className="form-grid">
+          <label className="span-2">
+            Nom
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} required data-autofocus />
           </label>
-          {error && <div role="alert" className="alert alert-error">{error}</div>}
-          <div className="modal-actions">
-            {isEdit && (
-              <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}>
-                Supprimer
-              </button>
-            )}
-            <span className="spacer" />
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-              Annuler
+          <label>
+            Emoji
+            <input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} maxLength={8} placeholder="ex : 🔧" />
+          </label>
+        </div>
+        <label>
+          Description
+          <input
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            maxLength={300}
+            placeholder="Ce qu'on trouve dans cette catégorie"
+          />
+        </label>
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
+        <div className="modal-actions">
+          {isEdit && (
+            <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}>
+              Supprimer
             </button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {isEdit ? 'Enregistrer' : 'Créer'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+          )}
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
+            Annuler
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {isEdit ? 'Enregistrer' : 'Créer'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -235,7 +234,7 @@ export default function Wiki() {
       )}
 
       {loading ? (
-        <div className="loading">Chargement…</div>
+        <div className="loading" role="status">Chargement…</div>
       ) : recent.length === 0 ? (
         <div className="card empty-state">
           <p className="muted">

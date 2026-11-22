@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { isComposing } from '../utils';
 
 // Menu de sélection façon Discord. À placer dans un parent `position: relative`
 // qui contient aussi le bouton d'ouverture (les clics dedans ne ferment pas le menu).
@@ -12,6 +13,7 @@ export default function TagPicker({
   placeholder = 'Rechercher un tag',
 }) {
   const ref = useRef(null);
+  const listId = useId();
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [alignRight, setAlignRight] = useState(false);
@@ -53,17 +55,32 @@ export default function TagPicker({
       e.preventDefault();
       setActive((activeIndex - 1 + items.length) % Math.max(items.length, 1));
     } else if (e.key === 'Enter') {
+      if (isComposing(e)) return; // validation d'une saisie IME (accents, emoji…), pas un choix
       e.preventDefault();
       choose(items[activeIndex]);
     } else if (e.key === 'Escape') {
+      e.preventDefault(); // ferme la liste sans fermer une éventuelle fenêtre autour
       onClose();
     }
   };
 
+  const optionId = (i) => `${listId}-${i}`;
+
+  // Option active (flèches du clavier) toujours visible dans la liste qui défile
+  useEffect(() => {
+    document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView({ block: 'nearest' });
+  }, [listId, activeIndex]);
+
   return (
     <div className={`tag-popover ${alignRight ? 'tag-popover-right' : ''}`} ref={ref}>
+      {/* Liste déroulante avec saisie (combobox) : le focus reste dans le champ, l'option active est annoncée */}
       <input
         autoFocus
+        role="combobox"
+        aria-expanded={items.length > 0}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={items.length > 0 ? optionId(activeIndex) : undefined}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -77,11 +94,12 @@ export default function TagPicker({
       {items.length === 0 ? (
         <div className="tag-popover-empty">Aucun tag trouvé</div>
       ) : (
-        <ul className="tag-options" role="listbox">
+        <ul className="tag-options" role="listbox" id={listId} aria-label="Tags">
           {items.map((item, i) =>
             item.type === 'create' ? (
               <li
                 key="__create"
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === activeIndex}
                 className={`tag-option tag-option-create ${i === activeIndex ? 'active' : ''}`}
@@ -94,6 +112,7 @@ export default function TagPicker({
             ) : (
               <li
                 key={item.tag.id}
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === activeIndex}
                 className={`tag-option ${i === activeIndex ? 'active' : ''}`}
@@ -106,7 +125,12 @@ export default function TagPicker({
                 {item.tag.memberCount !== undefined && (
                   <span className="tag-option-count">{item.tag.memberCount}</span>
                 )}
-                {selectedIds.has(item.tag.id) && <span className="tag-option-check">✓</span>}
+                {selectedIds.has(item.tag.id) && (
+                  <span className="tag-option-check">
+                    <span aria-hidden="true">✓</span>
+                    <span className="sr-only">, déjà attribué</span>
+                  </span>
+                )}
                 {onEdit && (
                   <button
                     type="button"

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import PromoSelect from '../components/PromoSelect';
+import PasswordField from '../components/PasswordField';
 
 const LINKEDIN_RE = /^https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/.+/i;
 const BLOCKED_LIST = BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' ni ');
@@ -74,7 +75,8 @@ export default function Signup({ onAuth }) {
             onChange={handleChange}
             placeholder="prenom.nom@gmail.com"
             required
-            autoComplete="email"
+            autoComplete="username"
+            spellCheck={false}
             aria-describedby="email-help"
           />
           <span id="email-help" className={`field-help ${isBlockedEmail(form.email) ? 'field-help-error' : ''}`}>
@@ -99,14 +101,25 @@ export default function Signup({ onAuth }) {
             emptyLabel="Choisis ta promo (facultatif)"
           />
         </label>
-        <label>
-          Mot de passe
-          <input type="password" name="password" value={form.password} onChange={handleChange} required minLength={8} autoComplete="new-password" />
-        </label>
-        <label>
-          Confirmer le mot de passe
-          <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required autoComplete="new-password" />
-        </label>
+        <PasswordField
+          label="Mot de passe"
+          help="8 caractères minimum"
+          name="password"
+          value={form.password}
+          onChange={handleChange}
+          required
+          minLength={8}
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label="Confirmer le mot de passe"
+          name="confirmPassword"
+          value={form.confirmPassword}
+          onChange={handleChange}
+          required
+          minLength={8}
+          autoComplete="new-password"
+        />
         {error && <div role="alert" className="alert alert-error">{error}</div>}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Création…' : 'Créer mon compte'}

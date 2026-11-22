@@ -241,7 +241,7 @@ export default function Annuaire() {
     else updateParams({ tri: column.key === 'name' ? null : column.key, ordre: column.defaultDir || null });
   };
 
-  if (loading) return <div className="loading">Chargement de l'annuaire…</div>;
+  if (loading) return <div className="loading" role="status">Chargement de l'annuaire…</div>;
 
   if (error?.pending) {
     return (
@@ -341,7 +341,8 @@ export default function Annuaire() {
       </div>
 
       <div className="results-bar">
-        <span className="muted">
+        {/* Nombre de résultats annoncé aux lecteurs d'écran quand la recherche ou les filtres changent */}
+        <span className="muted" role="status">
           {visibleMembers.length} membre{visibleMembers.length > 1 ? 's' : ''}
           {hasFilters && ` sur ${members.length}`}
         </span>
@@ -381,6 +382,7 @@ export default function Annuaire() {
       ) : (
         <div className="card directory">
           <table className="directory-table">
+            <caption className="sr-only">Membres de l’annuaire ({visibleMembers.length})</caption>
             <thead>
               <tr>
                 {COLUMNS.map((column) => (

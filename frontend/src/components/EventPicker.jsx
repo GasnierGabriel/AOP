@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isComposing } from '../utils';
 
 const sameText = (a, b) => a.toLowerCase() === b.toLowerCase();
 
@@ -53,7 +54,7 @@ export default function EventPicker({ value, onChange, presets, max = 12 }) {
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !isComposing(e)) {
               e.preventDefault();
               addCustom();
             }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
+import PasswordField from '../components/PasswordField';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -59,30 +60,24 @@ export default function ReinitialiserMotDePasse({ onAuth }) {
       {status === 'valid' && (
         <form onSubmit={handleSubmit} className="form">
           <p className="muted">Choisis ton nouveau mot de passe : tes autres sessions ouvertes seront déconnectées.</p>
-          <label>
-            Nouveau mot de passe
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              minLength={MIN_PASSWORD_LENGTH}
-              required
-              autoComplete="new-password"
-              autoFocus
-            />
-            <span className="field-help">{MIN_PASSWORD_LENGTH} caractères minimum</span>
-          </label>
-          <label>
-            Confirmer le mot de passe
-            <input
-              type="password"
-              value={form.confirm}
-              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-              minLength={MIN_PASSWORD_LENGTH}
-              required
-              autoComplete="new-password"
-            />
-          </label>
+          <PasswordField
+            label="Nouveau mot de passe"
+            help={`${MIN_PASSWORD_LENGTH} caractères minimum`}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            minLength={MIN_PASSWORD_LENGTH}
+            required
+            autoComplete="new-password"
+            autoFocus
+          />
+          <PasswordField
+            label="Confirmer le mot de passe"
+            value={form.confirm}
+            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+            minLength={MIN_PASSWORD_LENGTH}
+            required
+            autoComplete="new-password"
+          />
           {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting ? 'Enregistrement…' : 'Enregistrer et me connecter'}

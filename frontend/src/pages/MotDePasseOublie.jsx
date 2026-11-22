@@ -44,7 +44,7 @@ export default function MotDePasseOublie() {
           <form onSubmit={handleSubmit} className="form">
             <label>
               Mail perso
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" spellCheck={false} autoFocus />
               {blocked && (
                 <span className="field-help field-help-error">
                   Les adresses {BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' et ')} ne servent pas d'identifiant : indique

@@ -69,7 +69,7 @@ export default function Profile() {
   };
 
   if (loadError) return <div role="alert" className="alert alert-error">{loadError}</div>;
-  if (!me) return <div className="loading">Chargement…</div>;
+  if (!me) return <div className="loading" role="status">Chargement…</div>;
 
   const { user, permissions } = me;
   const setUserField = (field) => (value) => setMe((prev) => ({ ...prev, user: { ...prev.user, [field]: value } }));

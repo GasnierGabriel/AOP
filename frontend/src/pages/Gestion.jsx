@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import DeleteMemberDialog from '../components/DeleteMemberDialog';
+import { useConfirm } from '../components/ConfirmProvider';
 import PromoSelect from '../components/PromoSelect';
 import StatusBadge from '../components/StatusBadge';
 import Email from '../components/Email';
@@ -38,6 +39,7 @@ function accessSummary(member) {
 
 // Gestion des accès, réservée au bureau : validation des inscriptions, statut, bureau, niveau
 export default function Gestion({ session, onSessionChange }) {
+  const confirm = useConfirm();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -75,7 +77,7 @@ export default function Gestion({ session, onSessionChange }) {
   const updateAccess = async (member, changes) => {
     const isSelf = member.id === session?.user.id;
     if (isSelf && changes.isBureau === false) {
-      if (!window.confirm("Tu vas retirer ton propre accès bureau : tu ne pourras plus gérer les membres. Continuer ?")) {
+      if (!(await confirm("Tu vas retirer ton propre accès bureau : tu ne pourras plus gérer les membres. Continuer ?", { title: 'Retirer ton accès bureau', confirmLabel: 'Retirer mon accès', danger: true }))) {
         return;
       }
     }
@@ -104,7 +106,7 @@ export default function Gestion({ session, onSessionChange }) {
 
   // Refus d'une inscription : simple confirmation, le compte n'a encore aucun historique
   const refuse = async (member) => {
-    if (!window.confirm(`Refuser l'inscription de ${member.fullName} ? Son compte sera supprimé définitivement.`)) return;
+    if (!(await confirm(`Refuser l'inscription de ${member.fullName} ? Son compte sera supprimé définitivement.`, { title: 'Refuser l’inscription', confirmLabel: 'Refuser', danger: true }))) return;
     setSaving((s) => ({ ...s, [member.id]: true }));
     try {
       await deleteMember(member);
@@ -120,7 +122,7 @@ export default function Gestion({ session, onSessionChange }) {
     return null;
   };
 
-  if (loading) return <div className="loading">Chargement…</div>;
+  if (loading) return <div className="loading" role="status">Chargement…</div>;
   if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import { GOOGLE_MESSAGES, GoogleIcon, googleLinkUrl, loadAuthConfig } from '../googleSso';
 import AssistantsSection from '../components/AssistantsSection';
+import PasswordField from '../components/PasswordField';
+import { useConfirm } from '../components/ConfirmProvider';
 import { formatDate } from '../utils';
 
 const BLOCKED_LIST = BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' ni ');
@@ -83,6 +85,7 @@ function NotificationsSection({ initial }) {
 
 // Informations de connexion : mail perso, compte Google ARECE lié (SSO), mot de passe
 export default function Connexion({ onSessionChange }) {
+  const confirm = useConfirm();
   const [params, setParams] = useSearchParams();
   const [me, setMe] = useState(null);
   const [google, setGoogle] = useState({ enabled: false, domain: 'arece.eu' });
@@ -141,8 +144,8 @@ export default function Connexion({ onSessionChange }) {
       return '';
     }, 'Impossible de lancer la liaison avec Google');
 
-  const unlinkGoogle = () => {
-    if (!window.confirm('Dissocier ton compte Google ? Tu devras te connecter avec ton mail perso et ton mot de passe.')) return;
+  const unlinkGoogle = async () => {
+    if (!(await confirm('Dissocier ton compte Google ? Tu devras te connecter avec ton mail perso et ton mot de passe.', { title: 'Dissocier Google', confirmLabel: 'Dissocier', danger: true }))) return;
     runGoogle(async () => {
       await api.delete('/auth/google');
       setMe((prev) => ({ ...prev, google: { linked: false, email: null, linkedAt: null } }));
@@ -152,7 +155,7 @@ export default function Connexion({ onSessionChange }) {
   };
 
   if (loadError) return <div role="alert" className="alert alert-error">{loadError}</div>;
-  if (!me) return <div className="loading">Chargement…</div>;
+  if (!me) return <div className="loading" role="status">Chargement…</div>;
 
   return (
     <div className="detail connexion">
@@ -227,18 +230,16 @@ export default function Connexion({ onSessionChange }) {
                 placeholder="prenom.nom@gmail.com"
                 required
                 autoComplete="email"
+                spellCheck={false}
               />
             </label>
-            <label>
-              Mot de passe actuel
-              <input
-                type="password"
-                value={emailForm.currentPassword}
-                onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
-                required
-                autoComplete="current-password"
-              />
-            </label>
+            <PasswordField
+              label="Mot de passe actuel"
+              value={emailForm.currentPassword}
+              onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+              required
+              autoComplete="current-password"
+            />
             {emailState.error && <div role="alert" className="alert alert-error">{emailState.error}</div>}
             {emailState.success && <div role="status" className="alert alert-success">{emailState.success}</div>}
             <button type="submit" className="btn btn-primary" disabled={emailState.busy}>
@@ -250,37 +251,32 @@ export default function Connexion({ onSessionChange }) {
         <section className="card">
           <h2>Mot de passe</h2>
           <form className="form connexion-form" onSubmit={changePassword}>
-            <label>
-              Mot de passe actuel
-              <input
-                type="password"
-                value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                required
-                autoComplete="current-password"
-              />
-            </label>
-            <label>
-              Nouveau mot de passe
-              <input
-                type="password"
-                value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
-            <label>
-              Confirmer le nouveau mot de passe
-              <input
-                type="password"
-                value={passwordForm.confirm}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                required
-                autoComplete="new-password"
-              />
-            </label>
+            {/* Identifiant caché : le gestionnaire de mots de passe sait quel compte mettre à jour */}
+            <input type="email" name="username" value={me.email || ''} autoComplete="username" readOnly hidden />
+            <PasswordField
+              label="Mot de passe actuel"
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+              required
+              autoComplete="current-password"
+            />
+            <PasswordField
+              label="Nouveau mot de passe"
+              help="8 caractères minimum"
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
+            <PasswordField
+              label="Confirmer le nouveau mot de passe"
+              value={passwordForm.confirm}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
             {passwordState.error && <div role="alert" className="alert alert-error">{passwordState.error}</div>}
             {passwordState.success && <div role="status" className="alert alert-success">{passwordState.success}</div>}
             <button type="submit" className="btn btn-primary" disabled={passwordState.busy}>
