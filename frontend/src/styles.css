@@ -258,15 +258,37 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0; /* le nom rétrécit (avec « … ») plutôt que de faire déborder la barre */
 }
-.navbar-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; }
-/* Largeur intermédiaire : on libère de la place pour les liens */
-@media (max-width: 56.25em) {
+/* Nom très long : coupé avec « … » (complet dans l'infobulle et sur la page Informations de connexion) */
+.navbar-name {
+  min-width: 3em;
+  max-width: 14rem;
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Lien « nom → Informations de connexion » du menu ☰ : inutile quand le nom est affiché dans la barre */
+.navbar-links .nav-account { display: none; }
+/* Tablette et mobile : bouton ☰ puis liens en pleine largeur sous la barre ; le nom passe dans le menu
+   (même seuil pour les deux : le nom n'est jamais masqué sans être repris dans le menu).
+   70em : en dessous, les rubriques du bureau + le nom ne tiennent plus sur une ligne */
+@media (max-width: 70em) {
   .navbar-name { display: none; }
   .navbar-inner { gap: 16px; }
-}
-/* Tablette et mobile : bouton ☰ puis liens en pleine largeur sous la barre */
-@media (max-width: 53.75em) {
+  .menu-open .navbar-links .nav-account {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  .nav-account-name { color: var(--white); white-space: normal; text-transform: none; letter-spacing: normal; font-size: 0.95rem; font-weight: 600; }
+  .nav-account-hint { font-size: 0.72rem; }
   .navbar .menu-toggle { display: grid; } /* plus spécifique que la règle de base (display: none) */
   .navbar-user { margin-left: auto; }
   .navbar-links {
