@@ -6,7 +6,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "migrate": "node src/migrations/init.js",
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.js\"",
     "gallery:worker": "node src/gallery/worker.js",
     "gallery:full-sync": "node src/scripts/gallery-full-sync.js"
   },
