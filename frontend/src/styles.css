@@ -640,8 +640,18 @@ select.filter { width: auto; padding-right: 10px; }
 .linkedin-icon:focus-visible,
 .sort-button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 
-@media (max-width: 62.5em) {
+/* Le tableau s'adapte à la largeur de SA carte (requête de conteneur) : marges réduites puis colonnes secondaires
+   masquées, pour ne jamais déborder (les infos masquées restent dans la fiche et les filtres) */
+.card.directory { container-type: inline-size; }
+@container (max-width: 70em) {
+  .directory-table th,
+  .directory-table td { padding-left: 8px; padding-right: 8px; }
   .directory-table .col-competitions { display: none; }
+}
+@container (max-width: 56em) {
+  .directory-table .col-tags,
+  .sponsor-table .col-tier,
+  .sponsor-table .col-owner { display: none; }
 }
 /* Mobile : chaque ligne devient un bloc compact (le tri passe par la liste « Trier ») */
 @media (max-width: 47.5em) {
