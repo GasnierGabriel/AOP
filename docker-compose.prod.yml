@@ -69,6 +69,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "443:443/udp" # HTTP/3 (QUIC)
     volumes:
       - caddy_data:/data
       - caddy_config:/config

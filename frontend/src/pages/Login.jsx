@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import api, { BLOCKED_EMAIL_DOMAINS, errorMessage, isBlockedEmail } from '../api';
 import { GOOGLE_MESSAGES, GoogleIcon, googleLoginUrl, loadAuthConfig } from '../googleSso';
+import PasswordField from '../components/PasswordField';
 
 export default function Login({ onAuth }) {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export default function Login({ onAuth }) {
       <h1>Connexion</h1>
       <p className="muted">Annuaire des membres ARECE</p>
 
-      {googleMessage && <div className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
+      {googleMessage && <div role={googleMessage.type === 'error' ? 'alert' : 'status'} className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
 
       {google.enabled && (
         <>
@@ -63,7 +64,7 @@ export default function Login({ onAuth }) {
       <form onSubmit={handleSubmit} className="form">
         <label>
           Mail perso
-          <input type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="email" />
+          <input type="email" name="email" value={form.email} onChange={handleChange} required autoComplete="username" spellCheck={false} />
           {blocked && (
             <span className="field-help field-help-error">
               Les adresses {BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' et ')} ne servent pas d'identifiant :
@@ -71,16 +72,14 @@ export default function Login({ onAuth }) {
             </span>
           )}
         </label>
-        <label>
-          Mot de passe
-          <input type="password" name="password" value={form.password} onChange={handleChange} required autoComplete="current-password" />
+        <PasswordField label="Mot de passe" name="password" value={form.password} onChange={handleChange} required autoComplete="current-password">
           {passwordReset && (
             <Link to="/mot-de-passe-oublie" state={{ email: form.email }} className="field-link">
               Mot de passe oublié ?
             </Link>
           )}
-        </label>
-        {error && <div className="alert alert-error">{error}</div>}
+        </PasswordField>
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
         <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
           {submitting ? 'Connexion…' : 'Se connecter'}
         </button>

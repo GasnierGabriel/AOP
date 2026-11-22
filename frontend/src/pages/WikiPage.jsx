@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import Markdown from '../components/Markdown';
+import { useConfirm } from '../components/ConfirmProvider';
 import { formatDate } from '../utils';
 
 const formatDateTime = (value) =>
@@ -9,6 +10,7 @@ const formatDateTime = (value) =>
 
 // Lecture d'une page du wiki, avec son historique de versions
 export default function WikiPage() {
+  const confirm = useConfirm();
   const { slug } = useParams();
   const navigate = useNavigate();
   const [page, setPage] = useState(null);
@@ -34,6 +36,11 @@ export default function WikiPage() {
     setRevision(null);
     load();
   }, [slug]);
+
+  // Titre de l'onglet : celui de la page du wiki
+  useEffect(() => {
+    if (page?.title) document.title = `${page.title} · Wiki · ERP ARECE`;
+  }, [page?.title]);
 
   const toggleHistory = async () => {
     if (history) {
@@ -61,7 +68,7 @@ export default function WikiPage() {
 
   // Restaurer = enregistrer l'ancienne version comme nouvelle version (rien n'est perdu)
   const restore = async () => {
-    if (!window.confirm(`Restaurer la version du ${formatDateTime(revision.createdAt)} ? La version actuelle restera dans l'historique.`)) return;
+    if (!(await confirm(`Restaurer la version du ${formatDateTime(revision.createdAt)} ? La version actuelle restera dans l'historique.`, { title: 'Restaurer cette version', confirmLabel: 'Restaurer' }))) return;
     setBusy(true);
     setActionError('');
     try {
@@ -82,7 +89,7 @@ export default function WikiPage() {
   };
 
   const remove = async () => {
-    if (!window.confirm(`Supprimer définitivement la page « ${page.title} » et tout son historique ?`)) return;
+    if (!(await confirm(`Supprimer définitivement la page « ${page.title} » et tout son historique ?`, { confirmLabel: 'Supprimer', danger: true }))) return;
     setBusy(true);
     try {
       await api.delete(`/wiki/pages/${slug}`);
@@ -101,7 +108,7 @@ export default function WikiPage() {
       </div>
     );
   }
-  if (!page) return <div className="loading">Chargement…</div>;
+  if (!page) return <div className="loading" role="status">Chargement…</div>;
 
   const shown = revision || page;
 
@@ -138,10 +145,10 @@ export default function WikiPage() {
         </div>
       </div>
 
-      {actionError && <div className="alert alert-error">{actionError}</div>}
+      {actionError && <div role="alert" className="alert alert-error">{actionError}</div>}
 
       {revision && (
-        <div className="alert alert-info revision-banner">
+        <div role="status" className="alert alert-info revision-banner">
           <span>
             Ancienne version du <strong>{formatDateTime(revision.createdAt)}</strong>
             {revision.editedBy && ` par ${revision.editedBy.fullName}`}

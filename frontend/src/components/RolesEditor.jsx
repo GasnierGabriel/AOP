@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import api, { errorMessage } from '../api';
 import { academicYearStart, loadCatalog } from '../catalog';
 import { ItemActions, RoleTimeline } from './CareerLists';
+import { useConfirm } from './ConfirmProvider';
 
 const emptyForm = () => ({ name: '', pole: '', startDate: academicYearStart(), endDate: '', current: true });
 
 // Historique des rôles éditable : ajout, modification, suppression
 export default function RolesEditor({ memberId, roles, onChange }) {
+  const confirm = useConfirm();
   const [catalog, setCatalog] = useState({ roles: [], poles: [] });
   const [editing, setEditing] = useState(null); // null | 'new' | id de l'entrée
   const [form, setForm] = useState(emptyForm);
@@ -86,8 +88,8 @@ export default function RolesEditor({ memberId, roles, onChange }) {
     if (ok) close();
   };
 
-  const handleDelete = (role) => {
-    if (!window.confirm(`Supprimer le rôle « ${role.name} » de l'historique ?`)) return;
+  const handleDelete = async (role) => {
+    if (!(await confirm(`Supprimer le rôle « ${role.name} » de l'historique ?`, { confirmLabel: 'Supprimer', danger: true }))) return;
     request(() => api.delete(`/annuaire/members/${memberId}/roles/${role.id}`), 'Impossible de supprimer le rôle').then(
       (ok) => ok && editing === role.id && close()
     );
@@ -158,7 +160,7 @@ export default function RolesEditor({ memberId, roles, onChange }) {
               <option key={p} value={p} />
             ))}
           </datalist>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
               Annuler
@@ -170,7 +172,7 @@ export default function RolesEditor({ memberId, roles, onChange }) {
         </form>
       ) : (
         <>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="button" className="btn btn-outline btn-sm add-btn" onClick={() => open(null)}>
             + Ajouter un rôle
           </button>

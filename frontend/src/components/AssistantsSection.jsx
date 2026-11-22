@@ -1,28 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api, { errorMessage } from '../api';
 import { formatDate } from '../utils';
+import { useConfirm } from './ConfirmProvider';
 
-// Copie dans le presse-papiers avec un retour « Copié »
+// Copie dans le presse-papiers avec un retour « Copié », aussi annoncé aux lecteurs d'écran (zone role="status").
+// Le bouton reste actif pendant le retour (copier deux fois est sans risque) ; un nouveau clic relance le délai.
 function CopyButton({ text, label = 'Copier' }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState(''); // '', 'copied', 'failed'
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
   const copy = async () => {
+    clearTimeout(timer.current);
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setStatus('copied');
     } catch {
-      // Presse-papiers indisponible (HTTP, permissions) : l'utilisateur copie à la main
+      setStatus('failed'); // presse-papiers indisponible (HTTP, permissions) : copie à la main
     }
+    timer.current = setTimeout(() => setStatus(''), 2000);
   };
   return (
-    <button type="button" className="btn btn-outline btn-sm" onClick={copy}>
-      {copied ? 'Copié ✓' : label}
-    </button>
+    <>
+      <button type="button" className="btn btn-outline btn-sm" onClick={copy}>
+        {status === 'copied' ? 'Copié ✓' : label}
+      </button>
+      <span role="status" className="sr-only">
+        {status === 'copied' ? 'Copié dans le presse-papiers' : status === 'failed' ? 'Copie impossible, sélectionne le texte à la main' : ''}
+      </span>
+    </>
   );
 }
 
 // Assistants IA (serveur MCP) : adresse à donner à Claude / ChatGPT / Gemini, assistants connectés, jetons personnels
 export default function AssistantsSection() {
+  const confirm = useConfirm();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [hidden, setHidden] = useState(false);
@@ -52,8 +63,8 @@ export default function AssistantsSection() {
     }
   };
 
-  const disconnect = (app) =>
-    window.confirm(`Déconnecter « ${app.name} » ? Il faudra l'autoriser à nouveau pour s'en servir.`) &&
+  const disconnect = async (app) =>
+    (await confirm(`Déconnecter « ${app.name} » ? Il faudra l'autoriser à nouveau pour s'en servir.`, { title: 'Déconnecter l’assistant', confirmLabel: 'Déconnecter', danger: true })) &&
     run(async () => {
       await api.delete(`/mcp/apps/${encodeURIComponent(app.clientId)}`);
       await load();
@@ -69,15 +80,15 @@ export default function AssistantsSection() {
     }, 'Impossible de créer le jeton');
   };
 
-  const revokeToken = (t) =>
-    window.confirm(`Révoquer le jeton « ${t.label} » ? Les outils qui l'utilisent perdront l'accès.`) &&
+  const revokeToken = async (t) =>
+    (await confirm(`Révoquer le jeton « ${t.label} » ? Les outils qui l'utilisent perdront l'accès.`, { title: 'Révoquer le jeton', confirmLabel: 'Révoquer', danger: true })) &&
     run(async () => {
       await api.delete(`/mcp/jetons/${t.id}`);
       await load();
     }, 'Impossible de révoquer le jeton');
 
   if (hidden) return null; // compte pas encore validé
-  if (!data) return error ? <div className="alert alert-error">{error}</div> : null;
+  if (!data) return error ? <div role="alert" className="alert alert-error">{error}</div> : null;
 
   return (
     <section className="card assistants">
@@ -118,7 +129,7 @@ export default function AssistantsSection() {
         </p>
       </details>
 
-      {error && <div className="alert alert-error section-alert">{error}</div>}
+      {error && <div role="alert" className="alert alert-error section-alert">{error}</div>}
 
       <h3>Assistants connectés</h3>
       {data.apps.length === 0 ? (
@@ -146,7 +157,7 @@ export default function AssistantsSection() {
       <h3>Jetons personnels</h3>
       <p className="muted small">Pour les outils qui ne savent pas se connecter en OAuth. Valables 1 an, révocables à tout moment.</p>
       {created && (
-        <div className="alert alert-success token-created">
+        <div role="status" className="alert alert-success token-created">
           <span>Copie ce jeton maintenant : il ne sera plus jamais affiché.</span>
           <code>{created}</code>
           <span className="token-actions">

@@ -30,7 +30,7 @@ export default function MotDePasseOublie() {
       <h1>Mot de passe oublié</h1>
       {sent ? (
         <>
-          <div className="alert alert-success">{sent}</div>
+          <div role="status" className="alert alert-success">{sent}</div>
           <p className="muted small">
             Rien reçu après quelques minutes ? Vérifie l'adresse saisie ({email}) et tes spams, ou refais une demande.
           </p>
@@ -44,7 +44,7 @@ export default function MotDePasseOublie() {
           <form onSubmit={handleSubmit} className="form">
             <label>
               Mail perso
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" spellCheck={false} autoFocus />
               {blocked && (
                 <span className="field-help field-help-error">
                   Les adresses {BLOCKED_EMAIL_DOMAINS.map((d) => `@${d}`).join(' et ')} ne servent pas d'identifiant : indique
@@ -52,7 +52,7 @@ export default function MotDePasseOublie() {
                 </span>
               )}
             </label>
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div role="alert" className="alert alert-error">{error}</div>}
             <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
               {submitting ? 'Envoi…' : 'Recevoir le lien'}
             </button>

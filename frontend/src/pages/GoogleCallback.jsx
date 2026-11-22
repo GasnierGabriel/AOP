@@ -17,5 +17,5 @@ export default function GoogleCallback({ onAuth }) {
     }
   }, []); // une seule fois, au retour de Google
 
-  return <div className="loading">Connexion en cours…</div>;
+  return <div className="loading" role="status">Connexion en cours…</div>;
 }

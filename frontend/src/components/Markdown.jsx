@@ -6,10 +6,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 marked.setOptions({ gfm: true, breaks: true }); // tableaux, listes de tâches ; retour à la ligne = <br>
 
 // Liens externes dans un nouvel onglet, sans accès à la page d'origine
+// Images : chargées seulement à l'approche de l'écran, décodées sans bloquer, sans transmettre la page d'origine
 DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   if (node.tagName === 'A' && /^https?:\/\//i.test(node.getAttribute('href') || '')) {
     node.setAttribute('target', '_blank');
     node.setAttribute('rel', 'noopener noreferrer');
+  }
+  if (node.tagName === 'IMG') {
+    node.setAttribute('loading', 'lazy');
+    node.setAttribute('decoding', 'async');
+    node.setAttribute('referrerpolicy', 'no-referrer');
   }
 });
 
@@ -182,7 +188,11 @@ export default function Markdown({ source, toc = false }) {
       navigator.clipboard?.writeText(url).then(
         () => {
           link.classList.add('copied');
-          setTimeout(() => link.classList.remove('copied'), 1500);
+          link.setAttribute('aria-label', 'Lien copié');
+          setTimeout(() => {
+            link.classList.remove('copied');
+            link.setAttribute('aria-label', `Lien vers la section « ${link.parentElement?.textContent.replace(/#$/, '').trim()} »`);
+          }, 1500);
         },
         () => {}
       );

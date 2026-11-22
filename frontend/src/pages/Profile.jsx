@@ -68,8 +68,8 @@ export default function Profile() {
     }
   };
 
-  if (loadError) return <div className="alert alert-error">{loadError}</div>;
-  if (!me) return <div className="loading">Chargement…</div>;
+  if (loadError) return <div role="alert" className="alert alert-error">{loadError}</div>;
+  if (!me) return <div className="loading" role="status">Chargement…</div>;
 
   const { user, permissions } = me;
   const setUserField = (field) => (value) => setMe((prev) => ({ ...prev, user: { ...prev.user, [field]: value } }));
@@ -77,12 +77,12 @@ export default function Profile() {
   return (
     <div className="detail">
       {user.status === 'prospect' && (
-        <div className="alert alert-info">
+        <div role="status" className="alert alert-info">
           ⏳ Ton compte est en attente de validation par le bureau. Tu pourras accéder à l'annuaire une fois validé.
         </div>
       )}
       {user.emailNeedsUpdate && (
-        <div className="alert alert-info">
+        <div role="status" className="alert alert-info">
           Ton compte utilise une adresse ARECE / ECE comme identifiant : renseigne ton mail perso dans{' '}
           <Link to="/connexion">Informations de connexion</Link>, sinon tu ne pourras plus te reconnecter.
         </div>
@@ -168,8 +168,8 @@ export default function Profile() {
             placeholder="Projets menés, pièces conçues, résultats en compétition…"
           />
         </label>
-        {success && <div className="alert alert-success">✅ Profil enregistré</div>}
-        {saveError && <div className="alert alert-error">{saveError}</div>}
+        {success && <div role="status" className="alert alert-success">✅ Profil enregistré</div>}
+        {saveError && <div role="alert" className="alert alert-error">{saveError}</div>}
         <button type="submit" className="btn btn-primary" disabled={saving}>
           {saving ? 'Enregistrement…' : 'Enregistrer'}
         </button>

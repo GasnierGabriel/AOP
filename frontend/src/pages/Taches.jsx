@@ -27,13 +27,15 @@ function TaskCard({ task, onOpen, onDragStart, onDragEnd, dragging }) {
           {task.priority !== 'medium' && <span className={`task-priority priority-${task.priority}`}>{PRIORITY_LABEL[task.priority]}</span>}
           {task.dueDate && (
             <span className={`task-due ${due ? `task-due-${due}` : ''}`} title="Échéance">
-              {due === 'overdue' && '⚠ '}
+              {due === 'overdue' && <span aria-hidden="true">⚠ </span>}
+              <span className="sr-only">{due === 'overdue' ? 'En retard, échéance : ' : 'Échéance : '}</span>
               {formatDate(task.dueDate)}
             </span>
           )}
           {task.commentCount > 0 && (
             <span className="task-comments-count" title={`${task.commentCount} commentaire(s)`}>
-              💬 {task.commentCount}
+              <span aria-hidden="true">💬 {task.commentCount}</span>
+              <span className="sr-only">{task.commentCount} commentaire(s)</span>
             </span>
           )}
         </span>
@@ -44,6 +46,7 @@ function TaskCard({ task, onOpen, onDragStart, onDragEnd, dragging }) {
                 key={a.userId ? `u${a.userId}` : `n${a.name}`}
                 className={`task-avatar ${a.userId ? '' : 'is-external'}`}
                 title={assigneeName(a) + (a.userId ? '' : ' (sans compte)')}
+                aria-hidden="true"
               >
                 {initials(assigneeName(a))}
               </span>
@@ -231,8 +234,8 @@ export default function Taches({ session, onSessionChange }) {
     }
   };
 
-  if (loading) return <div className="loading">Chargement…</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (loading) return <div className="loading" role="status">Chargement…</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   const defaultAssignee = members.find((m) => m.id === myId);
 
@@ -322,7 +325,8 @@ export default function Taches({ session, onSessionChange }) {
       </div>
 
       <div className="results-bar">
-        <span className="muted">
+        {/* Nombre de résultats annoncé aux lecteurs d'écran quand la recherche ou les filtres changent */}
+        <span className="muted" role="status">
           {visible.length} tâche{visible.length > 1 ? 's' : ''}
           {hasFilters && ` sur ${tasks.length}`}
         </span>
@@ -347,7 +351,7 @@ export default function Taches({ session, onSessionChange }) {
         </div>
       </div>
 
-      {boardError && <div className="alert alert-error">{boardError}</div>}
+      {boardError && <div role="alert" className="alert alert-error">{boardError}</div>}
 
       <div className="kanban">
         {TASK_STATUSES.map((s) => {

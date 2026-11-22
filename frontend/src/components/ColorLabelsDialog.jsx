@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import api, { errorMessage } from '../api';
 import TagPill from './TagPill';
+import Modal from './Modal';
+import { useConfirm } from './ConfirmProvider';
 
 // Gestion d'une liste d'étiquettes colorées (rangs de sponsoring, pôles des tâches) :
 // renommer, changer la couleur, créer, supprimer (si inutilisée).
@@ -25,11 +27,7 @@ export default function ColorLabelsDialog({
 
   const close = () => !busy && onClose(changed);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && close();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  });
+  const confirm = useConfirm();
 
   const run = async (action, fallback) => {
     setBusy(true);
@@ -60,8 +58,8 @@ export default function ColorLabelsDialog({
     }, `Impossible d'enregistrer le ${noun}`);
   };
 
-  const remove = (item) => {
-    if (!window.confirm(`Supprimer le ${noun} « ${item.name} » ?`)) return;
+  const remove = async (item) => {
+    if (!(await confirm(`Supprimer le ${noun} « ${item.name} » ?`, { confirmLabel: 'Supprimer', danger: true }))) return;
     run(async () => {
       await api.delete(`${endpoint}/${item.id}`);
       setItems((list) => list.filter((t) => t.id !== item.id));
@@ -69,70 +67,68 @@ export default function ColorLabelsDialog({
   };
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="labels-title">
-        <h2 id="labels-title">{title}</h2>
-        {help && <p className="muted small">{help}</p>}
+    <Modal onClose={close} busy={busy} labelledBy="labels-title">
+      <h2 id="labels-title">{title}</h2>
+      {help && <p className="muted small">{help}</p>}
 
-        <ul className="tier-list">
-          {items.map((item) =>
-            editing?.id === item.id ? null : (
-              <li key={item.id}>
-                <TagPill tag={item} />
-                <span className="muted small">{countLabel(countOf(item) ?? 0)}</span>
-                <span className="tier-actions">
-                  <button type="button" className="icon-btn" onClick={() => setEditing(item)} disabled={busy} title="Modifier" aria-label={`Modifier ${item.name}`}>
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn-danger"
-                    onClick={() => remove(item)}
-                    disabled={busy || countOf(item) > 0}
-                    title={countOf(item) > 0 ? 'Encore utilisé' : 'Supprimer'}
-                    aria-label={`Supprimer ${item.name}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              </li>
-            )
-          )}
-        </ul>
-
-        {editing ? (
-          <form className="new-tier" onSubmit={save}>
-            <input
-              value={editing.name}
-              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-              placeholder={`Nom du ${noun}`}
-              maxLength={40}
-              required
-              autoFocus
-              aria-label={`Nom du ${noun}`}
-            />
-            <input type="color" value={editing.color} onChange={(e) => setEditing({ ...editing, color: e.target.value })} aria-label="Couleur" />
-            <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>
-              {editing.id ? 'Enregistrer' : 'Créer'}
-            </button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(null)} disabled={busy}>
-              Annuler
-            </button>
-          </form>
-        ) : (
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditing({ name: '', color: '#3498db' })}>
-            + Nouveau {noun}
-          </button>
+      <ul className="tier-list">
+        {items.map((item) =>
+          editing?.id === item.id ? null : (
+            <li key={item.id}>
+              <TagPill tag={item} />
+              <span className="muted small">{countLabel(countOf(item) ?? 0)}</span>
+              <span className="tier-actions">
+                <button type="button" className="icon-btn" onClick={() => setEditing(item)} disabled={busy} title="Modifier" aria-label={`Modifier ${item.name}`}>
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn icon-btn-danger"
+                  onClick={() => remove(item)}
+                  disabled={busy || countOf(item) > 0}
+                  title={countOf(item) > 0 ? 'Encore utilisé' : 'Supprimer'}
+                  aria-label={`Supprimer ${item.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            </li>
+          )
         )}
+      </ul>
 
-        {error && <div className="alert alert-error section-alert">{error}</div>}
-        <div className="modal-actions">
-          <span className="spacer" />
-          <button type="button" className="btn btn-primary" onClick={close} disabled={busy}>
-            Fermer
+      {editing ? (
+        <form className="new-tier" onSubmit={save}>
+          <input
+            value={editing.name}
+            onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+            placeholder={`Nom du ${noun}`}
+            maxLength={40}
+            required
+            autoFocus
+            aria-label={`Nom du ${noun}`}
+          />
+          <input type="color" value={editing.color} onChange={(e) => setEditing({ ...editing, color: e.target.value })} aria-label="Couleur" />
+          <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>
+            {editing.id ? 'Enregistrer' : 'Créer'}
           </button>
-        </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(null)} disabled={busy}>
+            Annuler
+          </button>
+        </form>
+      ) : (
+        <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditing({ name: '', color: '#3498db' })}>
+          + Nouveau {noun}
+        </button>
+      )}
+
+      {error && <div role="alert" className="alert alert-error section-alert">{error}</div>}
+      <div className="modal-actions">
+        <span className="spacer" />
+        <button type="button" className="btn btn-primary" onClick={close} disabled={busy}>
+          Fermer
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

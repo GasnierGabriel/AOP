@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const express = require('express');
+const { rateLimit } = require('express-rate-limit');
 const { query, pool } = require('../db');
 const {
   BLOCKED_EMAIL_DOMAINS,
@@ -28,6 +29,20 @@ const mailer = require('../mailer');
 const { hasSponsoringAccess, countUrgentCounterparts } = require('../sponsoring');
 
 const router = express.Router();
+
+// Limites de débit par adresse IP contre les essais de mots de passe et les abus d'envoi de mails
+const limit = (max, windowMinutes, error) =>
+  rateLimit({
+    windowMs: windowMinutes * 60 * 1000,
+    limit: max,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({ error }),
+  });
+const loginLimit = limit(20, 15, 'Trop de tentatives de connexion : réessaie dans quelques minutes.');
+const signupLimit = limit(10, 60, "Trop d'inscriptions depuis cette connexion : réessaie plus tard.");
+const resetMailLimit = limit(5, 15, 'Trop de demandes de réinitialisation : réessaie dans quelques minutes.');
+const resetLimit = limit(30, 15, 'Trop de tentatives : réessaie dans quelques minutes.');
 
 // Le niveau d'accès (1/2) n'est communiqué qu'aux membres du bureau
 function selfView(row) {
@@ -77,7 +92,7 @@ router.get('/config', (req, res) => {
 });
 
 // POST /api/auth/signup — le compte est créé en 'prospect' jusqu'à validation du bureau
-router.post('/signup', async (req, res) => {
+router.post('/signup', signupLimit, async (req, res) => {
   const body = req.body || {};
   const error = validateSignup(body);
   if (error) return res.status(400).json({ error });
@@ -117,7 +132,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // POST /api/auth/login — mail perso + mot de passe (les adresses ARECE / ECE passent par Google)
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimit, async (req, res) => {
   const { email, password } = req.body || {};
   if (typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
@@ -188,7 +203,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/auth/email { email, currentPassword } — changer son mail perso de connexion
-router.put('/email', authenticateToken, async (req, res) => {
+router.put('/email', authenticateToken, loginLimit, async (req, res) => {
   const { email, currentPassword } = req.body || {};
   const error = validateEmail(email);
   if (error) return res.status(400).json({ error });
@@ -226,7 +241,7 @@ router.put('/notifications', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/auth/password { currentPassword, newPassword } — déconnecte les autres sessions
-router.put('/password', authenticateToken, async (req, res) => {
+router.put('/password', authenticateToken, loginLimit, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (typeof newPassword !== 'string' || newPassword.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: `Le nouveau mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères` });
@@ -300,7 +315,7 @@ async function sendResetMail(email) {
 }
 
 // POST /api/auth/forgot-password { email } — réponse identique que le compte existe ou non
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', resetMailLimit, async (req, res) => {
   if (!mailer.isEnabled()) {
     return res.status(503).json({
       error: "La réinitialisation par mail n'est pas encore disponible : contacte un membre du bureau.",
@@ -337,14 +352,14 @@ const INVALID_RESET = {
 };
 
 // GET /api/auth/reset-password?token= — le lien est-il encore valable ?
-router.get('/reset-password', async (req, res) => {
+router.get('/reset-password', resetLimit, async (req, res) => {
   const reset = await findReset(req.query.token);
   if (!reset) return res.status(400).json(INVALID_RESET);
   res.json({ valid: true });
 });
 
 // POST /api/auth/reset-password { token, password } — nouveau mot de passe, toutes les sessions fermées, connexion
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', resetLimit, async (req, res) => {
   const { token, password } = req.body || {};
   if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
     return res.status(400).json({ error: `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères` });

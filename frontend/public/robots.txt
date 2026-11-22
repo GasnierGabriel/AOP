@@ -1,0 +1,3 @@
+# Outil interne de l’association ARECE : aucune page à indexer
+User-agent: *
+Disallow: /

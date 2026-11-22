@@ -5,6 +5,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 ENV REACT_APP_API_URL=/api
+# Pas de script en ligne dans index.html (politique CSP stricte) ni de cartes de sources publiées
+ENV INLINE_RUNTIME_CHUNK=false GENERATE_SOURCEMAP=false
 RUN npm run build
 
 FROM caddy:2-alpine

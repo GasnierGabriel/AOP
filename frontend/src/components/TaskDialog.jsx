@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import api, { errorMessage } from '../api';
 import { PRIORITIES, TASK_STATUSES, assigneeKey, assigneeName, dueState } from '../taskConfig';
-import { formatDate } from '../utils';
+import { formatDate, isComposing } from '../utils';
+import Modal from './Modal';
+import { useConfirm } from './ConfirmProvider';
 
 const OTHER = '__other';
 const DUE_LABEL = { overdue: 'En retard', today: "Aujourd'hui", soon: 'Bientôt' };
@@ -34,11 +36,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
   const [comment, setComment] = useState('');
   const [commentBusy, setCommentBusy] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && !busy && onClose();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [busy, onClose]);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!isEdit) return;
@@ -86,7 +84,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Supprimer définitivement la tâche « ${task.title} » et ses commentaires ?`)) return;
+    if (!(await confirm(`Supprimer définitivement la tâche « ${task.title} » et ses commentaires ?`, { confirmLabel: 'Supprimer', danger: true }))) return;
     setBusy(true);
     setError('');
     try {
@@ -116,7 +114,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
   };
 
   const deleteComment = async (c) => {
-    if (!window.confirm('Supprimer ce commentaire ?')) return;
+    if (!(await confirm('Supprimer ce commentaire ?', { confirmLabel: 'Supprimer', danger: true }))) return;
     try {
       await api.delete(`/tasks/comments/${c.id}`);
       const next = comments.filter((x) => x.id !== c.id);
@@ -131,202 +129,200 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
   const available = members.filter((m) => !selected.has(`u${m.id}`));
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="task-dialog-title">
-        <h2 id="task-dialog-title">{isEdit ? 'Tâche' : 'Nouvelle tâche'}</h2>
-        <form className="form" onSubmit={handleSubmit}>
+    <Modal onClose={onClose} busy={busy} className="modal-wide" labelledBy="task-dialog-title">
+      <h2 id="task-dialog-title">{isEdit ? 'Tâche' : 'Nouvelle tâche'}</h2>
+      <form className="form" onSubmit={handleSubmit}>
+        <label>
+          Titre
+          <input value={form.title} onChange={update('title')} maxLength={300} required data-autofocus={!isEdit || undefined} />
+        </label>
+        <div className="form-grid">
           <label>
-            Titre
-            <input value={form.title} onChange={update('title')} maxLength={300} required autoFocus={!isEdit} />
-          </label>
-          <div className="form-grid">
-            <label>
-              Statut
-              <select value={form.status} onChange={update('status')}>
-                {TASK_STATUSES.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Priorité
-              <select value={form.priority} onChange={update('priority')}>
-                {PRIORITIES.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Pôle
-              <select value={form.poleId} onChange={update('poleId')}>
-                <option value="">— Aucun —</option>
-                {poles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>
-                Échéance {due && <span className={`cp-badge cp-${due}`}>{DUE_LABEL[due]}</span>}
-              </span>
-              <input type="date" value={form.dueDate} onChange={update('dueDate')} />
-            </label>
-          </div>
-
-          <div className="field">
-            <span className="field-label">Responsables</span>
-            <div className="assignee-editor">
-              {form.assignees.map((a) => (
-                <span key={assigneeKey(a)} className={`assignee-chip ${a.userId ? '' : 'is-external'}`}>
-                  {assigneeName(a)}
-                  {!a.userId && <span className="muted"> (sans compte)</span>}
-                  <button type="button" onClick={() => removeAssignee(a)} aria-label={`Retirer ${assigneeName(a)}`} title="Retirer">
-                    ×
-                  </button>
-                </span>
+            Statut
+            <select value={form.status} onChange={update('status')}>
+              {TASK_STATUSES.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
               ))}
-              {otherName === null ? (
-                <select
-                  className="assignee-add"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value === OTHER) setOtherName('');
-                    else {
-                      const m = members.find((x) => x.id === Number(e.target.value));
-                      if (m) addAssignee({ userId: m.id, fullName: m.fullName });
+            </select>
+          </label>
+          <label>
+            Priorité
+            <select value={form.priority} onChange={update('priority')}>
+              {PRIORITIES.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Pôle
+            <select value={form.poleId} onChange={update('poleId')}>
+              <option value="">— Aucun —</option>
+              {poles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>
+              Échéance {due && <span className={`cp-badge cp-${due}`}>{DUE_LABEL[due]}</span>}
+            </span>
+            <input type="date" value={form.dueDate} onChange={update('dueDate')} />
+          </label>
+        </div>
+
+        <div className="field">
+          <span className="field-label">Responsables</span>
+          <div className="assignee-editor">
+            {form.assignees.map((a) => (
+              <span key={assigneeKey(a)} className={`assignee-chip ${a.userId ? '' : 'is-external'}`}>
+                {assigneeName(a)}
+                {!a.userId && <span className="muted"> (sans compte)</span>}
+                <button type="button" onClick={() => removeAssignee(a)} aria-label={`Retirer ${assigneeName(a)}`} title="Retirer">
+                  ×
+                </button>
+              </span>
+            ))}
+            {otherName === null ? (
+              <select
+                className="assignee-add"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value === OTHER) setOtherName('');
+                  else {
+                    const m = members.find((x) => x.id === Number(e.target.value));
+                    if (m) addAssignee({ userId: m.id, fullName: m.fullName });
+                  }
+                }}
+                aria-label="Ajouter un responsable"
+              >
+                <option value="">+ Ajouter un responsable…</option>
+                {available.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.fullName}
+                  </option>
+                ))}
+                <option value={OTHER}>Autre (sans compte ERP)…</option>
+              </select>
+            ) : (
+              <span className="assignee-other">
+                <input
+                  value={otherName}
+                  onChange={(e) => setOtherName(e.target.value)}
+                  placeholder="Nom de la personne"
+                  maxLength={200}
+                  autoFocus
+                  aria-label="Nom du responsable sans compte"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isComposing(e)) {
+                      e.preventDefault();
+                      addOther();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault(); // Échap annule la saisie sans fermer la fenêtre
+                      setOtherName(null);
                     }
                   }}
-                  aria-label="Ajouter un responsable"
-                >
-                  <option value="">+ Ajouter un responsable…</option>
-                  {available.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.fullName}
-                    </option>
-                  ))}
-                  <option value={OTHER}>Autre (sans compte ERP)…</option>
-                </select>
-              ) : (
-                <span className="assignee-other">
-                  <input
-                    value={otherName}
-                    onChange={(e) => setOtherName(e.target.value)}
-                    placeholder="Nom de la personne"
-                    maxLength={200}
-                    autoFocus
-                    aria-label="Nom du responsable sans compte"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addOther();
-                      } else if (e.key === 'Escape') {
-                        e.stopPropagation();
-                        setOtherName(null);
-                      }
-                    }}
-                  />
-                  <button type="button" className="btn btn-primary btn-sm" onClick={addOther}>
-                    Ajouter
-                  </button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOtherName(null)}>
-                    Annuler
-                  </button>
-                </span>
-              )}
-            </div>
-          </div>
-
-          <label>
-            Contexte
-            <textarea
-              rows={4}
-              value={form.context}
-              onChange={update('context')}
-              maxLength={5000}
-              placeholder="Détails, liens, prochaines étapes…"
-            />
-          </label>
-
-          {isEdit && (
-            <p className="muted small task-meta">
-              {task.imported
-                ? `Importée depuis Notion le ${formatDate(task.createdAt)}`
-                : `${task.createdBy ? `Créée par ${task.createdBy.fullName}` : 'Créée'} le ${formatDate(task.createdAt)}`}
-              {task.completedAt && ` · faite le ${formatDate(task.completedAt)}`}
-            </p>
-          )}
-
-          {error && <div className="alert alert-error">{error}</div>}
-          <div className="modal-actions">
-            {isEdit && task.canDelete && (
-              <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={busy}>
-                Supprimer
-              </button>
+                />
+                <button type="button" className="btn btn-primary btn-sm" onClick={addOther}>
+                  Ajouter
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOtherName(null)}>
+                  Annuler
+                </button>
+              </span>
             )}
-            <span className="spacer" />
-            <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-              Annuler
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {isEdit ? 'Enregistrer' : 'Créer'}
-            </button>
           </div>
-        </form>
+        </div>
+
+        <label>
+          Contexte
+          <textarea
+            rows={4}
+            value={form.context}
+            onChange={update('context')}
+            maxLength={5000}
+            placeholder="Détails, liens, prochaines étapes…"
+          />
+        </label>
 
         {isEdit && (
-          <section className="task-comments">
-            <h3>Commentaires</h3>
-            {comments === null ? (
-              <p className="muted small">Chargement…</p>
-            ) : (
-              <>
-                {comments.length === 0 && <p className="muted small">Aucun commentaire pour l'instant.</p>}
-                <ul className="comment-list">
-                  {comments.map((c) => (
-                    <li key={c.id}>
-                      <div className="comment-head">
-                        <strong>{c.author?.fullName || c.authorName || 'Ancien membre'}</strong>
-                        <span className="muted small">{formatDateTime(c.createdAt)}</span>
-                        {c.canDelete && (
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn-danger"
-                            onClick={() => deleteComment(c)}
-                            title="Supprimer"
-                            aria-label="Supprimer le commentaire"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                      <p className="comment-body">{c.body}</p>
-                    </li>
-                  ))}
-                </ul>
-                <form className="comment-form" onSubmit={postComment}>
-                  <textarea
-                    rows={2}
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    maxLength={5000}
-                    placeholder="Ajouter un commentaire…"
-                    aria-label="Nouveau commentaire"
-                  />
-                  <button type="submit" className="btn btn-outline btn-sm" disabled={commentBusy || !comment.trim()}>
-                    Commenter
-                  </button>
-                </form>
-              </>
-            )}
-          </section>
+          <p className="muted small task-meta">
+            {task.imported
+              ? `Importée depuis Notion le ${formatDate(task.createdAt)}`
+              : `${task.createdBy ? `Créée par ${task.createdBy.fullName}` : 'Créée'} le ${formatDate(task.createdAt)}`}
+            {task.completedAt && ` · faite le ${formatDate(task.completedAt)}`}
+          </p>
         )}
-      </div>
-    </div>
+
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
+        <div className="modal-actions">
+          {isEdit && task.canDelete && (
+            <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={busy}>
+              Supprimer
+            </button>
+          )}
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
+            Annuler
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {isEdit ? 'Enregistrer' : 'Créer'}
+          </button>
+        </div>
+      </form>
+
+      {isEdit && (
+        <section className="task-comments">
+          <h3>Commentaires</h3>
+          {comments === null ? (
+            <p className="muted small">Chargement…</p>
+          ) : (
+            <>
+              {comments.length === 0 && <p className="muted small">Aucun commentaire pour l'instant.</p>}
+              <ul className="comment-list">
+                {comments.map((c) => (
+                  <li key={c.id}>
+                    <div className="comment-head">
+                      <strong>{c.author?.fullName || c.authorName || 'Ancien membre'}</strong>
+                      <span className="muted small">{formatDateTime(c.createdAt)}</span>
+                      {c.canDelete && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn-danger"
+                          onClick={() => deleteComment(c)}
+                          title="Supprimer"
+                          aria-label="Supprimer le commentaire"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    <p className="comment-body">{c.body}</p>
+                  </li>
+                ))}
+              </ul>
+              <form className="comment-form" onSubmit={postComment}>
+                <textarea
+                  rows={2}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  maxLength={5000}
+                  placeholder="Ajouter un commentaire…"
+                  aria-label="Nouveau commentaire"
+                />
+                <button type="submit" className="btn btn-outline btn-sm" disabled={commentBusy || !comment.trim()}>
+                  Commenter
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      )}
+    </Modal>
   );
 }

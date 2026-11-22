@@ -3,6 +3,7 @@ import api, { errorMessage } from '../api';
 import { COMPETITION_CHOICES, eventsFor, isAwake } from '../catalog';
 import { CompetitionList, ItemActions } from './CareerLists';
 import EventPicker from './EventPicker';
+import { useConfirm } from './ConfirmProvider';
 
 const OTHER = '__other';
 
@@ -17,6 +18,7 @@ const emptyForm = () => ({
 
 // Compétitions éditables : ajout, modification, suppression
 export default function CompetitionsEditor({ memberId, competitions, onChange }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(null); // null | 'new' | id de l'entrée
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
@@ -87,8 +89,8 @@ export default function CompetitionsEditor({ memberId, competitions, onChange })
     if (ok) close();
   };
 
-  const handleDelete = (competition) => {
-    if (!window.confirm(`Retirer « ${competition.name} ${competition.year} » du parcours ?`)) return;
+  const handleDelete = async (competition) => {
+    if (!(await confirm(`Retirer « ${competition.name} ${competition.year} » du parcours ?`, { title: 'Retirer la compétition', confirmLabel: 'Retirer', danger: true }))) return;
     request(
       () => api.delete(`/annuaire/members/${memberId}/competitions/${competition.id}`),
       'Impossible de retirer la compétition'
@@ -182,7 +184,7 @@ export default function CompetitionsEditor({ memberId, competitions, onChange })
             />
           </label>
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
               Annuler
@@ -194,7 +196,7 @@ export default function CompetitionsEditor({ memberId, competitions, onChange })
         </form>
       ) : (
         <>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="button" className="btn btn-outline btn-sm add-btn" onClick={() => open(null)}>
             + Ajouter une compétition
           </button>

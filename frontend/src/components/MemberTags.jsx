@@ -110,7 +110,7 @@ export default function MemberTags({ memberId, tags, onChange }) {
         </div>
       </TagList>
 
-      {error && <div className="alert alert-error tag-error">{error}</div>}
+      {error && <div role="alert" className="alert alert-error tag-error">{error}</div>}
 
       {dialogTag && (
         <TagDialog

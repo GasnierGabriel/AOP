@@ -214,8 +214,8 @@ export default function Sponsoring({ session, onSessionChange }) {
     else updateParams({ tri: column.key === 'name' ? null : column.key, ordre: column.defaultDir || null });
   };
 
-  if (loading) return <div className="loading">Chargement…</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (loading) return <div className="loading" role="status">Chargement…</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (
     <div className="sponsoring">
@@ -328,7 +328,8 @@ export default function Sponsoring({ session, onSessionChange }) {
       </div>
 
       <div className="results-bar">
-        <span className="muted">
+        {/* Nombre de résultats annoncé aux lecteurs d'écran quand la recherche ou les filtres changent */}
+        <span className="muted" role="status">
           {visible.length} partenaire{visible.length > 1 ? 's' : ''}
           {hasFilters && ` sur ${sponsors.length}`}
         </span>
@@ -349,7 +350,7 @@ export default function Sponsoring({ session, onSessionChange }) {
         </div>
       </div>
 
-      {rowError && <div className="alert alert-error">{rowError}</div>}
+      {rowError && <div role="alert" className="alert alert-error">{rowError}</div>}
 
       {sponsors.length === 0 ? (
         <div className="card empty-state">
@@ -364,6 +365,7 @@ export default function Sponsoring({ session, onSessionChange }) {
       ) : (
         <div className="card directory">
           <table className="directory-table sponsor-table">
+            <caption className="sr-only">Partenaires ({visible.length})</caption>
             <thead>
               <tr>
                 {COLUMNS.map((column) => {

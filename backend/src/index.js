@@ -16,6 +16,7 @@ const { startNotificationScheduler } = require('./notifications/scheduler');
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
+app.disable('x-powered-by'); // ne pas annoncer la technologie du serveur
 app.set('trust proxy', 1); // derrière Caddy : IP réelle des visiteurs (limites de débit)
 
 // Serveur MCP et routes OAuth standard, avec leurs propres règles CORS et de lecture du corps
