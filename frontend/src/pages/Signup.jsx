@@ -107,7 +107,7 @@ export default function Signup({ onAuth }) {
           Confirmer le mot de passe
           <input type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required autoComplete="new-password" />
         </label>
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Création…' : 'Créer mon compte'}
         </button>

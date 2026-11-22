@@ -158,7 +158,7 @@ export default function RolesEditor({ memberId, roles, onChange }) {
               <option key={p} value={p} />
             ))}
           </datalist>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
               Annuler
@@ -170,7 +170,7 @@ export default function RolesEditor({ memberId, roles, onChange }) {
         </form>
       ) : (
         <>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="button" className="btn btn-outline btn-sm add-btn" onClick={() => open(null)}>
             + Ajouter un rôle
           </button>

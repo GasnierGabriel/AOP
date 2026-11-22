@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import api, { errorMessage } from '../api';
 import TagPill from './TagPill';
+import useModal from '../useModal';
 
 // Gestion d'une liste d'étiquettes colorées (rangs de sponsoring, pôles des tâches) :
 // renommer, changer la couleur, créer, supprimer (si inutilisée).
@@ -25,11 +26,7 @@ export default function ColorLabelsDialog({
 
   const close = () => !busy && onClose(changed);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && close();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  });
+  const modalRef = useModal({ onClose: close });
 
   const run = async (action, fallback) => {
     setBusy(true);
@@ -70,7 +67,7 @@ export default function ColorLabelsDialog({
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="labels-title">
+      <div className="modal" role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="labels-title">
         <h2 id="labels-title">{title}</h2>
         {help && <p className="muted small">{help}</p>}
 
@@ -125,7 +122,7 @@ export default function ColorLabelsDialog({
           </button>
         )}
 
-        {error && <div className="alert alert-error section-alert">{error}</div>}
+        {error && <div role="alert" className="alert alert-error section-alert">{error}</div>}
         <div className="modal-actions">
           <span className="spacer" />
           <button type="button" className="btn btn-primary" onClick={close} disabled={busy}>

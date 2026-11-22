@@ -46,7 +46,7 @@ export default function Login({ onAuth }) {
       <h1>Connexion</h1>
       <p className="muted">Annuaire des membres ARECE</p>
 
-      {googleMessage && <div className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
+      {googleMessage && <div role={googleMessage.type === 'error' ? 'alert' : 'status'} className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
 
       {google.enabled && (
         <>
@@ -80,7 +80,7 @@ export default function Login({ onAuth }) {
             </Link>
           )}
         </label>
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
         <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
           {submitting ? 'Connexion…' : 'Se connecter'}
         </button>

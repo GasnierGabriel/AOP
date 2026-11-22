@@ -252,7 +252,7 @@ export default function Annuaire() {
       </div>
     );
   }
-  if (error) return <div className="alert alert-error">{error.message}</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error.message}</div>;
 
   return (
     <>
@@ -264,6 +264,7 @@ export default function Annuaire() {
         <input
           type="search"
           className="search"
+          aria-label="Rechercher dans l’annuaire"
           placeholder="Rechercher un nom, un rôle, un tag…"
           value={search}
           onChange={(e) => updateParams({ q: e.target.value })}

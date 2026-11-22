@@ -50,7 +50,7 @@ export default function ReinitialiserMotDePasse({ onAuth }) {
       {status === 'checking' && <p className="muted">Vérification du lien…</p>}
       {status === 'invalid' && (
         <>
-          <div className="alert alert-error">Ce lien est invalide, a déjà servi ou a expiré (il est valable 1 heure).</div>
+          <div role="alert" className="alert alert-error">Ce lien est invalide, a déjà servi ou a expiré (il est valable 1 heure).</div>
           <Link to="/mot-de-passe-oublie" className="btn btn-primary">
             Recevoir un nouveau lien
           </Link>
@@ -83,7 +83,7 @@ export default function ReinitialiserMotDePasse({ onAuth }) {
               autoComplete="new-password"
             />
           </label>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting ? 'Enregistrement…' : 'Enregistrer et me connecter'}
           </button>

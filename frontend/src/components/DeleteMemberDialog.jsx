@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { errorMessage } from '../api';
+import useModal from '../useModal';
 
 const normalize = (text) => text.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -9,11 +10,7 @@ export default function DeleteMemberDialog({ member, onConfirm, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && !busy && onClose();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [busy, onClose]);
+  const modalRef = useModal({ onClose, busy });
 
   const matches = normalize(typed) === normalize(member.fullName);
 
@@ -35,7 +32,7 @@ export default function DeleteMemberDialog({ member, onConfirm, onClose }) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-desc">
+      <div className="modal" role="alertdialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-desc">
         <h2 id="delete-title">Supprimer le compte</h2>
         <div id="delete-desc" className="delete-warning">
           <p>
@@ -64,7 +61,7 @@ export default function DeleteMemberDialog({ member, onConfirm, onClose }) {
               autoComplete="off"
             />
           </label>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="modal-actions">
             <span className="spacer" />
             <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>

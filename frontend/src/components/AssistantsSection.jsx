@@ -77,7 +77,7 @@ export default function AssistantsSection() {
     }, 'Impossible de révoquer le jeton');
 
   if (hidden) return null; // compte pas encore validé
-  if (!data) return error ? <div className="alert alert-error">{error}</div> : null;
+  if (!data) return error ? <div role="alert" className="alert alert-error">{error}</div> : null;
 
   return (
     <section className="card assistants">
@@ -118,7 +118,7 @@ export default function AssistantsSection() {
         </p>
       </details>
 
-      {error && <div className="alert alert-error section-alert">{error}</div>}
+      {error && <div role="alert" className="alert alert-error section-alert">{error}</div>}
 
       <h3>Assistants connectés</h3>
       {data.apps.length === 0 ? (
@@ -146,7 +146,7 @@ export default function AssistantsSection() {
       <h3>Jetons personnels</h3>
       <p className="muted small">Pour les outils qui ne savent pas se connecter en OAuth. Valables 1 an, révocables à tout moment.</p>
       {created && (
-        <div className="alert alert-success token-created">
+        <div role="status" className="alert alert-success token-created">
           <span>Copie ce jeton maintenant : il ne sera plus jamais affiché.</span>
           <code>{created}</code>
           <span className="token-actions">

@@ -60,6 +60,12 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--font);
@@ -74,6 +80,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh; /* mobile : hauteur réelle, barre d'adresse comprise */
 }
 
 h1, h2, h3 {
@@ -159,6 +166,7 @@ a:hover {
 }
 .auth-logo {
   width: 150px;
+  height: auto;
   max-width: 50vw;
   margin-bottom: 28px;
 }
@@ -1057,6 +1065,8 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   width: 100%;
   max-width: 480px;
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overscroll-behavior: contain;
   overflow-y: auto;
   padding: 28px;
   border-radius: 4px;
@@ -1848,3 +1858,64 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Case à cocher sur une ligne avec son libellé */
 .checkbox-line { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; line-height: 1.45; margin-bottom: 10px; }
 .checkbox-line input { margin-top: 3px; width: auto; flex: none; }
+
+/* ---------- Accessibilité ---------- */
+
+/* Texte réservé aux lecteurs d'écran */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Lien d'évitement : visible uniquement au clavier, mène directement au contenu */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--white);
+  color: var(--navy);
+  font-weight: 600;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.skip-link:focus { top: 12px; }
+main:focus { outline: none; }
+
+/* Focus clavier visible sur tout élément interactif qui n'a pas de style dédié */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+.modal:focus { outline: none; }
+
+/* Préférence système « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Page d'erreur (affichage cassé ou nouvelle version du site) */
+.error-page { max-width: 560px; margin: 32px auto; text-align: center; }
+.error-page h1 { font-size: 1.3rem; margin-top: 0; }
+
+/* Images du wiki : jamais plus larges que la page */
+.markdown img { max-width: 100%; height: auto; }
+

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { errorMessage } from '../api';
 import { DEFAULT_TAG_COLOR, EMOJI_CHOICES, TAG_COLORS, readableTextColor } from '../tagConfig';
 import TagPill from './TagPill';
+import useModal from '../useModal';
 
 // Fenêtre de création / édition d'un tag, façon paramètres de rôle Discord
 export default function TagDialog({ tag, onSave, onDelete, onClose }) {
@@ -12,11 +13,7 @@ export default function TagDialog({ tag, onSave, onDelete, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && !busy && onClose();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [busy, onClose]);
+  const modalRef = useModal({ onClose, busy });
 
   const isCustomColor = color !== DEFAULT_TAG_COLOR && !TAG_COLORS.includes(color);
 
@@ -61,7 +58,7 @@ export default function TagDialog({ tag, onSave, onDelete, onClose }) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="tag-dialog-title">
+      <div className="modal" role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="tag-dialog-title">
         <h2 id="tag-dialog-title">{isEdit ? 'Modifier le tag' : 'Créer un tag'}</h2>
 
         <div className="tag-preview">
@@ -127,7 +124,7 @@ export default function TagDialog({ tag, onSave, onDelete, onClose }) {
             />
           </div>
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
 
           <div className="modal-actions">
             {isEdit && onDelete && (

@@ -232,7 +232,7 @@ export default function Taches({ session, onSessionChange }) {
   };
 
   if (loading) return <div className="loading">Chargement…</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   const defaultAssignee = members.find((m) => m.id === myId);
 
@@ -347,7 +347,7 @@ export default function Taches({ session, onSessionChange }) {
         </div>
       </div>
 
-      {boardError && <div className="alert alert-error">{boardError}</div>}
+      {boardError && <div role="alert" className="alert alert-error">{boardError}</div>}
 
       <div className="kanban">
         {TASK_STATUSES.map((s) => {

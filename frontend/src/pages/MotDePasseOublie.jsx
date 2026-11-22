@@ -30,7 +30,7 @@ export default function MotDePasseOublie() {
       <h1>Mot de passe oublié</h1>
       {sent ? (
         <>
-          <div className="alert alert-success">{sent}</div>
+          <div role="status" className="alert alert-success">{sent}</div>
           <p className="muted small">
             Rien reçu après quelques minutes ? Vérifie l'adresse saisie ({email}) et tes spams, ou refais une demande.
           </p>
@@ -52,7 +52,7 @@ export default function MotDePasseOublie() {
                 </span>
               )}
             </label>
-            {error && <div className="alert alert-error">{error}</div>}
+            {error && <div role="alert" className="alert alert-error">{error}</div>}
             <button type="submit" className="btn btn-primary" disabled={submitting || blocked}>
               {submitting ? 'Envoi…' : 'Recevoir le lien'}
             </button>

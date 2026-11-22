@@ -121,7 +121,7 @@ export default function Gestion({ session, onSessionChange }) {
   };
 
   if (loading) return <div className="loading">Chargement…</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (
     <div className="gestion">
@@ -204,6 +204,7 @@ export default function Gestion({ session, onSessionChange }) {
         <input
           type="search"
           className="search"
+          aria-label="Rechercher un membre"
           placeholder="Rechercher un nom, un email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -321,9 +322,9 @@ export default function Gestion({ session, onSessionChange }) {
         <table>
           <thead>
             <tr>
-              <th>Statut</th>
-              <th>Niveau 1</th>
-              <th>Niveau 2</th>
+              <th scope="col">Statut</th>
+              <th scope="col">Niveau 1</th>
+              <th scope="col">Niveau 2</th>
             </tr>
           </thead>
           <tbody>

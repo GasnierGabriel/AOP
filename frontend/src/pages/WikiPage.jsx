@@ -35,6 +35,11 @@ export default function WikiPage() {
     load();
   }, [slug]);
 
+  // Titre de l'onglet : celui de la page du wiki
+  useEffect(() => {
+    if (page?.title) document.title = `${page.title} · Wiki · ERP ARECE`;
+  }, [page?.title]);
+
   const toggleHistory = async () => {
     if (history) {
       setHistory(null);
@@ -138,10 +143,10 @@ export default function WikiPage() {
         </div>
       </div>
 
-      {actionError && <div className="alert alert-error">{actionError}</div>}
+      {actionError && <div role="alert" className="alert alert-error">{actionError}</div>}
 
       {revision && (
-        <div className="alert alert-info revision-banner">
+        <div role="status" className="alert alert-info revision-banner">
           <span>
             Ancienne version du <strong>{formatDateTime(revision.createdAt)}</strong>
             {revision.editedBy && ` par ${revision.editedBy.fullName}`}

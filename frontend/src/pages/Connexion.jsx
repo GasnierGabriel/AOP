@@ -75,7 +75,7 @@ function NotificationsSection({ initial }) {
         />
         <span>Mail quand quelqu'un m'assigne une tâche</span>
       </label>
-      {state.error && <div className="alert alert-error section-alert">{state.error}</div>}
+      {state.error && <div role="alert" className="alert alert-error section-alert">{state.error}</div>}
       {state.success && <p className="muted small">{state.success}</p>}
     </section>
   );
@@ -151,7 +151,7 @@ export default function Connexion({ onSessionChange }) {
     }, 'Impossible de dissocier le compte Google');
   };
 
-  if (loadError) return <div className="alert alert-error">{loadError}</div>;
+  if (loadError) return <div role="alert" className="alert alert-error">{loadError}</div>;
   if (!me) return <div className="loading">Chargement…</div>;
 
   return (
@@ -167,7 +167,7 @@ export default function Connexion({ onSessionChange }) {
       </div>
 
       {me.emailNeedsUpdate && (
-        <div className="alert alert-info">
+        <div role="status" className="alert alert-info">
           Ton compte utilise encore l'adresse <strong>{me.email}</strong>. Les adresses {BLOCKED_LIST} ne permettent
           plus de se connecter par mot de passe : renseigne ton mail perso ci-dessous
           {google.enabled ? ', puis lie ton compte Google ARECE' : ''}.
@@ -176,9 +176,9 @@ export default function Connexion({ onSessionChange }) {
 
       <section className="card">
         <h2>Connexion Google ARECE</h2>
-        {googleMessage && <div className={`alert alert-${googleMessage.type} section-alert`}>{googleMessage.text}</div>}
-        {googleState.error && <div className="alert alert-error section-alert">{googleState.error}</div>}
-        {googleState.success && <div className="alert alert-success section-alert">{googleState.success}</div>}
+        {googleMessage && <div role={googleMessage.type === 'error' ? 'alert' : 'status'} className={`alert alert-${googleMessage.type} section-alert`}>{googleMessage.text}</div>}
+        {googleState.error && <div role="alert" className="alert alert-error section-alert">{googleState.error}</div>}
+        {googleState.success && <div role="status" className="alert alert-success section-alert">{googleState.success}</div>}
 
         {me.google.linked ? (
           <div className="google-status">
@@ -239,8 +239,8 @@ export default function Connexion({ onSessionChange }) {
                 autoComplete="current-password"
               />
             </label>
-            {emailState.error && <div className="alert alert-error">{emailState.error}</div>}
-            {emailState.success && <div className="alert alert-success">{emailState.success}</div>}
+            {emailState.error && <div role="alert" className="alert alert-error">{emailState.error}</div>}
+            {emailState.success && <div role="status" className="alert alert-success">{emailState.success}</div>}
             <button type="submit" className="btn btn-primary" disabled={emailState.busy}>
               Changer d'adresse
             </button>
@@ -281,8 +281,8 @@ export default function Connexion({ onSessionChange }) {
                 autoComplete="new-password"
               />
             </label>
-            {passwordState.error && <div className="alert alert-error">{passwordState.error}</div>}
-            {passwordState.success && <div className="alert alert-success">{passwordState.success}</div>}
+            {passwordState.error && <div role="alert" className="alert alert-error">{passwordState.error}</div>}
+            {passwordState.success && <div role="status" className="alert alert-success">{passwordState.success}</div>}
             <button type="submit" className="btn btn-primary" disabled={passwordState.busy}>
               Changer le mot de passe
             </button>

@@ -108,7 +108,7 @@ export default function WikiEditor() {
   };
 
   if (loading) return <div className="loading">Chargement…</div>;
-  if (error && !initial.current) return <div className="alert alert-error">{error}</div>;
+  if (error && !initial.current) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (
     <div className="wiki wiki-editor">
@@ -116,6 +116,7 @@ export default function WikiEditor() {
         <Link to="/wiki">Wiki</Link> <span aria-hidden="true">›</span>{' '}
         <span>{isEdit ? `Modifier « ${initial.current?.title} »` : 'Nouvelle page'}</span>
       </nav>
+      <h1 className="sr-only">{isEdit ? `Modifier la page « ${initial.current?.title} »` : 'Nouvelle page du wiki'}</h1>
 
       <form id="wiki-editor-form" className="card form wiki-form" onSubmit={save}>
         <div className="form-grid">
@@ -196,7 +197,7 @@ export default function WikiEditor() {
           </table>
         </details>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && <div role="alert" className="alert alert-error">{error}</div>}
         <div className="form-actions">
           <button type="button" className="btn btn-ghost" onClick={cancel} disabled={busy}>
             Annuler

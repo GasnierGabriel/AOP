@@ -1,5 +1,5 @@
 {$SITE_ADDRESS} {
-	encode gzip
+	encode zstd gzip
 
 	header {
 		X-Content-Type-Options nosniff
@@ -7,7 +7,14 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		# Une fois venu en HTTPS, le navigateur n'utilise plus que HTTPS pour ce domaine (ignoré en HTTP)
 		Strict-Transport-Security "max-age=31536000"
+		# Seuls les scripts, styles, polices et appels de l'ERP lui-même sont autorisés (images du wiki : tout lien https).
+		# Styles en ligne permis : attributs style de React et diagrammes Mermaid.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# Aucune fonction sensible du navigateur n'est utilisée par l'ERP
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+		Cross-Origin-Opener-Policy same-origin
 		-Server
+		-X-Powered-By
 	}
 
 	handle /api/* {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api, { errorMessage } from '../api';
 import { formatDate } from '../utils';
+import useModal from '../useModal';
 
 // Ligne de liste : titre, catégorie (si mélangées), extrait, dernière modification
 export function WikiPageItem({ page, showCategory }) {
@@ -34,6 +35,7 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
     description: category?.description || '',
   });
   const [busy, setBusy] = useState(false);
+  const modalRef = useModal({ onClose, busy });
   const [error, setError] = useState('');
 
   const run = async (action, fallback) => {
@@ -67,7 +69,7 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="category-title">
+      <div className="modal" role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="category-title">
         <h2 id="category-title">{isEdit ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h2>
         <form className="form" onSubmit={save}>
           <div className="form-grid">
@@ -89,7 +91,7 @@ function CategoryDialog({ category, onSaved, onDeleted, onClose }) {
               placeholder="Ce qu'on trouve dans cette catégorie"
             />
           </label>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="modal-actions">
             {isEdit && (
               <button type="button" className="btn btn-danger" onClick={remove} disabled={busy}>
@@ -153,7 +155,7 @@ export default function Wiki() {
   const newPageLink = `/wiki/nouveau${slug ? `?categorie=${slug}` : ''}`;
   const recent = !slug && !search ? pages.slice(0, 8) : pages;
 
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
   if (slug && categories.length > 0 && !category) {
     return (
       <div className="card empty-state">
@@ -195,6 +197,7 @@ export default function Wiki() {
       <input
         type="search"
         className="search wiki-search"
+        aria-label="Rechercher dans le wiki"
         placeholder={category ? `Rechercher dans ${category.name}…` : 'Rechercher dans tout le wiki…'}
         value={search}
         onChange={(e) => setParams(e.target.value ? { q: e.target.value } : {}, { replace: true })}

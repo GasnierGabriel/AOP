@@ -36,7 +36,7 @@ export default function AutoriserAssistant({ session }) {
   return (
     <div className="card auth-card consent-card">
       <h1>Autoriser un assistant</h1>
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div role="alert" className="alert alert-error">{error}</div>}
       {!error && !request && <p className="muted">Chargement…</p>}
       {request && (
         <>

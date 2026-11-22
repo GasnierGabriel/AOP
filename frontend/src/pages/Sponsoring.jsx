@@ -215,7 +215,7 @@ export default function Sponsoring({ session, onSessionChange }) {
   };
 
   if (loading) return <div className="loading">Chargement…</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (error) return <div role="alert" className="alert alert-error">{error}</div>;
 
   return (
     <div className="sponsoring">
@@ -349,7 +349,7 @@ export default function Sponsoring({ session, onSessionChange }) {
         </div>
       </div>
 
-      {rowError && <div className="alert alert-error">{rowError}</div>}
+      {rowError && <div role="alert" className="alert alert-error">{rowError}</div>}
 
       {sponsors.length === 0 ? (
         <div className="card empty-state">

@@ -39,7 +39,7 @@ export default function MemberDetail() {
         ← Retour
       </button>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div role="alert" className="alert alert-error">{error}</div>}
       {!error && !member && <div className="loading">Chargement…</div>}
 
       {member && (

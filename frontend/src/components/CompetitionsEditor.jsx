@@ -182,7 +182,7 @@ export default function CompetitionsEditor({ memberId, competitions, onChange })
             />
           </label>
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={close} disabled={busy}>
               Annuler
@@ -194,7 +194,7 @@ export default function CompetitionsEditor({ memberId, competitions, onChange })
         </form>
       ) : (
         <>
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <button type="button" className="btn btn-outline btn-sm add-btn" onClick={() => open(null)}>
             + Ajouter une compétition
           </button>

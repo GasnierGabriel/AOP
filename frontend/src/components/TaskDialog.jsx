@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { errorMessage } from '../api';
 import { PRIORITIES, TASK_STATUSES, assigneeKey, assigneeName, dueState } from '../taskConfig';
 import { formatDate } from '../utils';
+import useModal from '../useModal';
 
 const OTHER = '__other';
 const DUE_LABEL = { overdue: 'En retard', today: "Aujourd'hui", soon: 'Bientôt' };
@@ -34,11 +35,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
   const [comment, setComment] = useState('');
   const [commentBusy, setCommentBusy] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => e.key === 'Escape' && !busy && onClose();
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [busy, onClose]);
+  const modalRef = useModal({ onClose, busy });
 
   useEffect(() => {
     if (!isEdit) return;
@@ -132,7 +129,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <div className="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="task-dialog-title">
+      <div className="modal modal-wide" role="dialog" ref={modalRef} tabIndex={-1} aria-modal="true" aria-labelledby="task-dialog-title">
         <h2 id="task-dialog-title">{isEdit ? 'Tâche' : 'Nouvelle tâche'}</h2>
         <form className="form" onSubmit={handleSubmit}>
           <label>
@@ -262,7 +259,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
             </p>
           )}
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div role="alert" className="alert alert-error">{error}</div>}
           <div className="modal-actions">
             {isEdit && task.canDelete && (
               <button type="button" className="btn btn-danger" onClick={handleDelete} disabled={busy}>
