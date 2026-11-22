@@ -168,6 +168,13 @@ function Navbar({ session, onLogout }) {
               )}
             </NavLink>
           )}
+          {/* Dans le menu ☰ (écrans étroits), le nom masqué de la barre reste accessible ici */}
+          {session && (
+            <NavLink to="/connexion" className={({ isActive }) => `nav-account${isActive ? ' active' : ''}`}>
+              <span className="nav-account-name">{session.user.fullName}</span>
+              <span className="nav-account-hint">Informations de connexion</span>
+            </NavLink>
+          )}
         </nav>
         <div className="navbar-user">
           {session && (
