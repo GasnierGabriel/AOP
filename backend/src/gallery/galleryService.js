@@ -101,7 +101,7 @@ async function getAlbum(albumId, viewer) {
     query(
       `SELECT ${ALBUM_COLUMNS} FROM gallery_albums a ${ALBUM_JOINS}
         WHERE a.parent_id = $1 AND NOT a.is_deleted AND a.total_photo_count > 0
-        ORDER BY a.last_taken_at DESC NULLS LAST, LOWER(a.name), a.id`,
+        ORDER BY a.first_taken_at NULLS LAST, LOWER(a.name), a.id`, -- sous-albums dans l'ordre chronologique (Jour 1, Jour 2…)
       [albumId]
     ),
   ]);

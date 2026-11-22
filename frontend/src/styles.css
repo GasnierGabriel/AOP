@@ -2145,6 +2145,8 @@ summary:focus-visible,
   overflow: hidden;
 }
 .modal.photo-viewer:not([open]) { display: none; }
+/* Pas de barre de défilement de la page derrière la visionneuse plein écran */
+:root:has(.photo-viewer[open]) { overflow: hidden; }
 .modal.photo-viewer::backdrop { background: #000; }
 .photo-viewer-bar {
   display: flex;
