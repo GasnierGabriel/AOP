@@ -209,6 +209,31 @@ function getAskAreceAccess(user) {
   return Number(user.level) >= 2 ? 'limited' : 'none';
 }
 
+// Galerie photos : bureau, actifs et alumni (L1 et L2), honoraires L2 ; jamais les prospects
+function canViewGallery(user) {
+  if (!user) return false;
+  if (user.is_bureau) return true;
+  switch (user.status) {
+    case 'active':
+    case 'alumni':
+      return true;
+    case 'honorary':
+      return Number(user.level) >= 2;
+    default:
+      return false;
+  }
+}
+
+// Synchronisation et liens vers le Drive : bureau uniquement
+const canManageGallery = (user) => Boolean(user?.is_bureau);
+
+function requireGallery(req, res, next) {
+  if (!canViewGallery(req.user)) {
+    return res.status(403).json({ error: 'Galerie réservée aux membres validés de l’association' });
+  }
+  next();
+}
+
 module.exports = {
   JWT_SECRET,
   BLOCKED_EMAIL_DOMAINS,
@@ -230,4 +255,7 @@ module.exports = {
   getCurrentAcademicYear,
   canViewUser,
   getAskAreceAccess,
+  canViewGallery,
+  canManageGallery,
+  requireGallery,
 };
