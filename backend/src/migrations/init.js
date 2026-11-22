@@ -380,6 +380,77 @@ CREATE TABLE IF NOT EXISTS notification_log (
   sent_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, kind, sent_on)
 );
+
+-- Galerie photos : index du Drive partagé « ARECE – Photos » (synchronisé par le service gallery-worker).
+-- Rien n'est jamais effacé quand un fichier disparaît du Drive : is_deleted passe à TRUE (les futurs tags restent).
+CREATE TABLE IF NOT EXISTS gallery_albums (
+  id                  SERIAL PRIMARY KEY,
+  drive_folder_id     VARCHAR(128) NOT NULL UNIQUE,        -- dossier du Drive (ou le Drive lui-même : album « Non classé »)
+  drive_parent_id     VARCHAR(128),                        -- dossier parent côté Drive, pour retrouver parent_id
+  name                VARCHAR(500) NOT NULL,
+  parent_id           INTEGER REFERENCES gallery_albums(id) ON DELETE SET NULL,
+  cover_photo_id      INTEGER,                             -- couverture choisie à la main (plus tard)
+  auto_cover_photo_id INTEGER,                             -- sinon : première photo par date
+  photo_count         INTEGER NOT NULL DEFAULT 0,          -- photos de l'album lui-même
+  total_photo_count   INTEGER NOT NULL DEFAULT 0,          -- photos de l'album et de ses sous-albums
+  first_taken_at      TIMESTAMPTZ,                         -- période couverte (sous-albums compris)
+  last_taken_at       TIMESTAMPTZ,
+  is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS gallery_albums_parent_idx ON gallery_albums (parent_id);
+
+CREATE TABLE IF NOT EXISTS gallery_photos (
+  id                       SERIAL PRIMARY KEY,
+  drive_file_id            VARCHAR(128) NOT NULL UNIQUE,
+  drive_parent_id          VARCHAR(128),
+  album_id                 INTEGER REFERENCES gallery_albums(id) ON DELETE SET NULL,
+  filename                 VARCHAR(500) NOT NULL,
+  mime_type                VARCHAR(100) NOT NULL,
+  size_bytes               BIGINT,
+  md5_checksum             VARCHAR(64),
+  width                    INTEGER,
+  height                   INTEGER,
+  taken_at                 TIMESTAMPTZ NOT NULL,           -- date EXIF, sinon date d'ajout au Drive
+  drive_created_at         TIMESTAMPTZ,
+  drive_modified_at        TIMESTAMPTZ,
+  thumb_status             VARCHAR(10) NOT NULL DEFAULT 'pending' CHECK (thumb_status IN ('pending', 'ok', 'error')),
+  thumb_error              TEXT,
+  thumb_attempts           SMALLINT NOT NULL DEFAULT 0,
+  thumbs_generated_for_md5 VARCHAR(64),
+  is_deleted               BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS gallery_photos_album_taken_idx ON gallery_photos (album_id, taken_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS gallery_photos_thumb_todo_idx ON gallery_photos (id) WHERE thumb_status <> 'ok' AND NOT is_deleted;
+
+DO $$ BEGIN
+  ALTER TABLE gallery_albums ADD CONSTRAINT gallery_albums_cover_fk
+    FOREIGN KEY (cover_photo_id) REFERENCES gallery_photos(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE gallery_albums ADD CONSTRAINT gallery_albums_auto_cover_fk
+    FOREIGN KEY (auto_cover_photo_id) REFERENCES gallery_photos(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Une seule ligne : où en est la synchronisation avec le Drive
+CREATE TABLE IF NOT EXISTS gallery_sync_state (
+  id                       SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  start_page_token         VARCHAR(255),
+  last_full_sync_at        TIMESTAMPTZ,
+  last_incremental_sync_at TIMESTAMPTZ,
+  last_error               TEXT,
+  last_error_at            TIMESTAMPTZ,
+  stats                    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  running_since            TIMESTAMPTZ,
+  sync_requested_at        TIMESTAMPTZ,
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO gallery_sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 `;
 
 // Idempotente : exécutée au démarrage de l'API, et via `npm run migrate`
@@ -387,6 +458,8 @@ async function runMigrations() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // L'API et le service gallery-worker démarrent ensemble : une seule migration à la fois
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('arece_migrations'))");
     await client.query(SQL);
     await client.query('COMMIT');
   } catch (err) {

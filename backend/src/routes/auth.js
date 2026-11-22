@@ -15,6 +15,8 @@ const {
   authenticateToken,
   getCurrentAcademicYear,
   getAskAreceAccess,
+  canViewGallery,
+  canManageGallery,
 } = require('../auth');
 const {
   cleanLinkedin,
@@ -178,6 +180,8 @@ router.get('/me', authenticateToken, async (req, res) => {
   const permissions = {
     canViewDirectory: req.user.is_bureau || req.user.status !== 'prospect',
     canAccessSponsoring: await hasSponsoringAccess(req.user),
+    canViewGallery: canViewGallery(req.user),
+    canManageGallery: canManageGallery(req.user),
   };
   if (permissions.canAccessSponsoring) permissions.urgentCounterparts = await countUrgentCounterparts();
   if (permissions.canViewDirectory) {

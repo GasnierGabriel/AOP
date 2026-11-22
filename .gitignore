@@ -3,3 +3,6 @@ build/
 .env
 npm-debug.log*
 .DS_Store
+# Clés de comptes de service Google (galerie) : uniquement sur le serveur
+secrets/
+*.serviceaccount.json

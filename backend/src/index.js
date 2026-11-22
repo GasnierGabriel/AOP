@@ -11,6 +11,7 @@ const annuaireRoutes = require('./routes/annuaire');
 const sponsoringRoutes = require('./routes/sponsoring');
 const wikiRoutes = require('./routes/wiki');
 const taskRoutes = require('./routes/tasks');
+const galleryRoutes = require('./routes/gallery');
 const { mountMcp, mcpApiRouter } = require('./mcp');
 const { startNotificationScheduler } = require('./notifications/scheduler');
 
@@ -42,6 +43,7 @@ app.use('/api/annuaire', annuaireRoutes);
 app.use('/api/sponsoring', sponsoringRoutes);
 app.use('/api/wiki', wikiRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/gallery', galleryRoutes);
 app.use('/api/mcp', mcpApiRouter);
 
 app.use('/api', (req, res) => {

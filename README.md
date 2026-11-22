@@ -139,17 +139,89 @@ leur couleur ou supprimer un rang non attribué.
 API : `GET /api/sponsoring/sponsors`, `POST /api/sponsoring/sponsors`,
 `PATCH` / `DELETE /api/sponsoring/sponsors/:id`, `GET /api/sponsoring/team` (responsables possibles).
 
+### Galerie photos
+
+Page **Galerie** (`/galerie`) : les photos de l'asso, stockées dans le **Drive partagé « ARECE – Photos »**, indexées
+par l'ERP et affichées aux membres connectés selon leurs droits (tableau des permissions ci-dessous). Les membres
+n'ont pas besoin d'accès au Drive. Lecture seule pour l'instant : on ajoute, range et supprime les photos **dans le Drive**.
+
+- Chaque dossier du Drive est un album, chaque sous-dossier un sous-album ; les photos posées à la racine du Drive
+  vont dans l'album « Non classé ». Albums vides masqués. Types pris en charge : JPEG, PNG, WebP, HEIC/HEIF (iPhone).
+  Vidéos et autres fichiers ignorés (comptés dans l'état de synchro).
+- Le service **`gallery-worker`** (même image que l'API) synchronise le Drive toutes les
+  `GALLERY_SYNC_INTERVAL_MINUTES` (10 min) : renommages, déplacements, mises à la corbeille (album ou photo masqués,
+  restaurés s'ils sortent de la corbeille) et suppressions. Rien n'est effacé en base (`is_deleted`).
+- Il prépare deux miniatures WebP par photo (400 px pour la grille, 1600 px pour la visionneuse), redressées selon
+  l'EXIF et **sans aucune métadonnée (pas de GPS)**, dans le volume Docker `gallery_thumbs`. HEIC : converti par
+  `heic-convert` (les binaires de `sharp` ne lisent pas le HEVC). L'**original** téléchargé depuis la visionneuse
+  vient tel quel du Drive, avec ses métadonnées d'origine.
+- Images servies par des **liens signés** (HMAC, valables 1 à 2 h, propres à chaque membre) : l'ERP s'authentifie
+  par un en-tête que les balises `<img>` n'envoient pas. Chaque image revérifie les droits du membre (un compte
+  repassé prospect perd l'accès en une minute au plus).
+- Bureau : bouton **Synchroniser**, date et erreurs de la dernière synchro, liens « Ouvrir dans le Drive ».
+
+#### Mise en place côté Google (une fois)
+
+1. **Drive partagé** : sur drive.google.com avec un compte @arece.eu → *Drives partagés* → *Nouveau* →
+   « ARECE – Photos ». L'ID est la fin de son adresse : `https://drive.google.com/drive/folders/<ID>`.
+2. **Partage externe** : le compte de service a une adresse hors du domaine arece.eu.
+   - Console d'admin Google (admin.google.com) → *Applications* → *Google Workspace* → *Drive et Docs* →
+     *Paramètres de partage* : le partage hors d'ARECE doit être autorisé (éventuellement limité à une liste
+     d'autorisation), ainsi que l'accès des personnes externes aux fichiers des Drives partagés.
+   - Dans le Drive partagé : roue crantée → *Paramètres du Drive partagé* → autoriser les personnes externes à ARECE.
+3. **API Drive** : console.cloud.google.com, projet `aop-arece-test` → *API et services* → *Bibliothèque* →
+   « Google Drive API » → *Activer*.
+4. **Compte de service** : *IAM et administration* → *Comptes de service* → *Créer* : nom `erp-galerie`,
+   **aucun rôle** sur le projet. Noter son adresse (`erp-galerie@aop-arece-test.iam.gserviceaccount.com`).
+5. **Clé JSON** : sur ce compte → onglet *Clés* → *Ajouter une clé* → *Créer une clé* → JSON (fichier téléchargé).
+   Si Google refuse (« la création de clés de compte de service est désactivée ») : *IAM et administration* →
+   *Règles d'administration* → `iam.disableServiceAccountKeyCreation` → *Gérer la règle* → remplacer la règle
+   parente pour ce projet par *Non appliquée* (rôle « Administrateur des règles d'administration » au niveau de
+   l'organisation requis), créer la clé, puis remettre la règle.
+6. **Accès au Drive** : Drive partagé → *Gérer les membres* → ajouter l'adresse du compte de service, rôle
+   **Lecteur**, sans notification.
+7. **Serveur** (la clé ne passe jamais par git ni par une messagerie) :
+   ```bash
+   scp galerie-drive.json arece@<serveur>:~/arece/secrets/galerie-drive.json
+   ssh arece@<serveur> 'chmod 700 ~/arece/secrets && chmod 600 ~/arece/secrets/galerie-drive.json'
+   # dans ~/arece/.env : GALLERY_SHARED_DRIVE_ID=<ID de l'étape 1>
+   cd ~/arece && docker compose -f docker-compose.prod.yml --env-file .env up -d
+   docker compose -f docker-compose.prod.yml logs -f gallery-worker   # première synchro complète
+   ```
+   Le fichier doit s'appeler `galerie-drive.json` (variable `GOOGLE_APPLICATION_CREDENTIALS` du compose).
+   Changer de clé : en créer une nouvelle, remplacer le fichier, `docker compose … restart backend gallery-worker`,
+   puis supprimer l'ancienne dans la console. Sur une machine Google Cloud avec un compte de service attaché,
+   aucune clé n'est nécessaire (retirer alors `GOOGLE_APPLICATION_CREDENTIALS`).
+
+#### Commandes utiles
+
+```bash
+# Synchro complète à la main (relit tout le Drive ; les miniatures suivent dans le worker)
+docker compose -f docker-compose.prod.yml --env-file .env exec gallery-worker npm run gallery:full-sync
+# Refaire toutes les miniatures (ex : après un changement de taille)
+docker compose -f docker-compose.prod.yml exec postgres psql -U arece -d arece_db -c "UPDATE gallery_photos SET thumb_status='pending', thumb_attempts=0"
+# Tests (mapping Drive → base, permissions des routes, liens signés, miniatures)
+docker compose -f docker-compose.prod.yml exec backend npm test
+```
+
+La synchro sur une vraie base se teste avec une base dédiée (son nom doit finir par `_test`, elle est vidée) :
+`TEST_DATABASE_URL=postgresql://arece:<mdp>@postgres:5432/arece_gallery_test npm test`.
+Les tables `gallery_*` sont dans les sauvegardes de la base ; les miniatures non (recalculables depuis le Drive).
+
 ### Permissions (rôles d'accès)
 
-| Rôle d'accès     | Annuaire visible                         | Ask ARECE |
-|------------------|------------------------------------------|-----------|
-| Bureau           | Tout (y compris prospects)               | Complet   |
-| Actif L1         | Bureau + actifs de l'année               | Limité    |
-| Actif L2         | Tout                                     | Limité    |
-| Alumni L1        | Lui-même + alumni                        | Aucun     |
-| Alumni L2        | Tout                                     | Limité    |
-| Honoraire L1/L2  | Lui-même / tout *(non spécifié, à valider)* | Aucun / Limité |
-| Prospect         | Aucun                                    | Aucun     |
+| Rôle d'accès     | Annuaire visible                         | Ask ARECE | Galerie |
+|------------------|------------------------------------------|-----------|---------|
+| Bureau           | Tout (y compris prospects)               | Complet   | Oui + synchro et liens Drive |
+| Actif L1         | Bureau + actifs de l'année               | Limité    | Oui     |
+| Actif L2         | Tout                                     | Limité    | Oui     |
+| Alumni L1        | Lui-même + alumni                        | Aucun     | Oui     |
+| Alumni L2        | Tout                                     | Limité    | Oui     |
+| Honoraire L1/L2  | Lui-même / tout *(non spécifié, à valider)* | Aucun / Limité | Non / Oui |
+| Prospect         | Aucun                                    | Aucun     | Non     |
+
+Ces règles sont des fonctions de `backend/src/auth.js` (`canViewUser`, `getAskAreceAccess`, `canViewGallery`,
+`canManageGallery`) ; `/api/auth/me` les transmet au frontend dans `permissions`.
 
 « Limité » = sans le dossier `bureau` du Drive. L'année académique va du 1er septembre
 au 31 août ; un « actif de l'année » est un membre au statut `active` (le bureau passe
@@ -189,6 +261,14 @@ les sortants en `alumni` à chaque rentrée).
 | PATCH / DELETE | `/api/annuaire/members/:id/roles/:entryId` | ✔ soi-même ou bureau |
 | POST    | `/api/annuaire/members/:id/competitions` `{ name, year, events[{ name, rank }], result, comment }` | ✔ soi-même ou bureau |
 | PATCH / DELETE | `/api/annuaire/members/:id/competitions/:entryId` | ✔ soi-même ou bureau |
+| GET     | `/api/gallery/albums`         | ✔ galerie (albums visibles, à plat avec `parentId`) |
+| GET     | `/api/gallery/albums/:id`     | ✔ galerie (album, fil d'Ariane, sous-albums) |
+| GET     | `/api/gallery/albums/:id/photos?cursor=&limit=60` | ✔ galerie (par curseur, plus récentes d'abord) |
+| GET     | `/api/gallery/photos/:id`     | ✔ galerie (photo, liens frais, place dans l'album) |
+| GET     | `/api/gallery/photos/:id/thumb?size=sm\|lg&exp&u&sig` | lien signé (miniature WebP) |
+| GET     | `/api/gallery/photos/:id/original?exp&u&sig` | lien signé (original depuis le Drive, limité en débit) |
+| POST    | `/api/gallery/sync`           | ✔ bureau (synchro immédiate par le worker) |
+| GET     | `/api/gallery/sync/status`    | ✔ bureau |
 
 ### Parcours (rôles et compétitions)
 
