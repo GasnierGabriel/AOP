@@ -207,7 +207,7 @@ export default function TaskDialog({ task, presetStatus, defaultAssignee, poles,
                     {m.fullName}
                   </option>
                 ))}
-                <option value={OTHER}>Autre (sans compte ERP)…</option>
+                <option value={OTHER}>Autre (sans compte Périclès)…</option>
               </select>
             ) : (
               <span className="assignee-other">

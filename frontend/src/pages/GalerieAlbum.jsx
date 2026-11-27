@@ -109,7 +109,7 @@ export default function GalerieAlbum() {
 
   // Titre de l'onglet : nom de l'album
   useEffect(() => {
-    if (info?.album.name) document.title = `${info.album.name} · Galerie · ERP ARECE`;
+    if (info?.album.name) document.title = `${info.album.name} · Galerie · Périclès`;
   }, [info?.album.name]);
 
   // Photo demandée par l'adresse (?photo=ID) : on charge les pages jusqu'à la trouver

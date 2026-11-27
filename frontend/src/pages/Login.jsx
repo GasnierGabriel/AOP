@@ -45,7 +45,7 @@ export default function Login({ onAuth }) {
   return (
     <div className="card auth-card">
       <h1>Connexion</h1>
-      <p className="muted">Annuaire des membres ARECE</p>
+      <p className="muted">Périclès · l’espace des membres ARECE</p>
 
       {googleMessage && <div role={googleMessage.type === 'error' ? 'alert' : 'status'} className={`alert alert-${googleMessage.type} auth-alert`}>{googleMessage.text}</div>}
 

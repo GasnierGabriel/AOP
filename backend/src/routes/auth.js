@@ -309,13 +309,13 @@ async function sendResetMail(email) {
     title: 'Réinitialiser ton mot de passe',
     paragraphs: [
       `Bonjour ${firstName},`,
-      "Quelqu'un (sans doute toi) a demandé à réinitialiser le mot de passe de ton compte sur l'ERP ARECE.",
+      "Quelqu'un (sans doute toi) a demandé à réinitialiser le mot de passe de ton compte sur Périclès.",
       `Ce lien est valable ${RESET_TTL_MINUTES} minutes et ne fonctionne qu'une fois.`,
     ],
     button: { label: 'Choisir un nouveau mot de passe', url },
     footer: "Tu n'as rien demandé ? Ignore ce mail : ton mot de passe actuel reste valable.",
   });
-  await mailer.sendMail({ to: user.email, subject: 'ERP ARECE · Réinitialisation de ton mot de passe', text, html });
+  await mailer.sendMail({ to: user.email, subject: 'Périclès · Réinitialisation de ton mot de passe', text, html });
 }
 
 // POST /api/auth/forgot-password { email } — réponse identique que le compte existe ou non

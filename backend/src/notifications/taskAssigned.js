@@ -25,9 +25,9 @@ function buildMail({ recipient, actor, task, others }) {
     title: 'Une tâche t’a été assignée',
     paragraphs,
     button: { label: 'Ouvrir la tâche', url: `${mailer.PUBLIC_URL}/taches?tache=${task.id}` },
-    footer: 'Mail envoyé par l’ERP ARECE quand on t’assigne une tâche. Pour ne plus le recevoir : Informations de connexion → Notifications par mail.',
+    footer: 'Mail envoyé par Périclès quand on t’assigne une tâche. Pour ne plus le recevoir : Informations de connexion → Notifications par mail.',
   });
-  return { subject: `ERP ARECE · Nouvelle tâche pour toi : ${task.title}`, text, html };
+  return { subject: `Périclès · Nouvelle tâche pour toi : ${task.title}`, text, html };
 }
 
 // userIds : membres nouvellement ajoutés comme responsables ; actor : membre à l'origine de la modification

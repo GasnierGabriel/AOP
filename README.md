@@ -1,7 +1,7 @@
-# AOP
-test d'une interface pour la gestion d'ARECE
+# Périclès
+Périclès : l'outil interne des membres de l'association ARECE (anciennement « ERP ARECE »).
 
-## ERP ARECE — Annuaire des membres
+## Périclès — annuaire, tâches, wiki, galerie et sponsoring
 
 Stack : Node/Express + React + PostgreSQL, via Docker Compose.
 
@@ -54,7 +54,7 @@ Activer le SSO Google :
 
 Chaque matin à partir de 8 h (heure de Paris, `TASK_REMINDER_HOUR`), chaque responsable inscrit reçoit **un seul
 mail récapitulatif** de ses tâches encore dans « À faire » dont l'échéance est passée, tant qu'elles le restent.
-Les responsables sans compte ERP ne reçoivent rien. Chacun peut désactiver la relance dans *Informations de connexion
+Les responsables sans compte Périclès ne reçoivent rien. Chacun peut désactiver la relance dans *Informations de connexion
 → Notifications par mail*. Un envoi par personne et par jour au maximum (table `notification_log`), même après un
 redémarrage. Nécessite l'envoi de mails (ci-dessous) ; `TASK_REMINDERS=off` dans `.env` coupe tout.
 Aperçu sans envoi : `docker compose -f docker-compose.prod.yml exec backend node src/scripts/task-reminders.js`
@@ -96,7 +96,7 @@ Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.goog
 (connecteur personnalisé), ChatGPT (connecteur en mode développeur), Gemini CLI / Antigravity, Claude Code…
 - **Connexion** : OAuth 2.1 avec enregistrement dynamique des clients et PKCE (routes standard `/authorize`,
   `/token`, `/register`, `/revoke`, `/.well-known/oauth-*` fournies par le SDK MCP officiel). L'étape d'accord se
-  fait dans l'ERP (`/autoriser-assistant`) par le membre connecté. Jetons d'accès 1 h, renouvellement 30 jours
+  fait dans Périclès (`/autoriser-assistant`) par le membre connecté. Jetons d'accès 1 h, renouvellement 30 jours
   (rotation), tous stockés hachés. Pour les outils sans OAuth : **jetons personnels** (1 an) créés dans
   *Informations de connexion → Assistants IA*, où l'on peut aussi déconnecter un assistant.
 - **Droits** : l'assistant agit avec les droits du membre. Les jetons d'assistant ne sont acceptés que sur
@@ -106,7 +106,7 @@ Délivrabilité : publier les enregistrements DNS SPF (`v=spf1 include:_spf.goog
   contenu complet, protégé contre l'écrasement d'une modification concurrente), `wiki_historique`,
   et pour le bureau / tag Sponsoring : `partenaires_lister`, `partenaire_details`, `partenaire_creer`,
   `partenaire_modifier`, `partenaire_ajouter_contact`, `partenaire_ajouter_contrepartie`, `contrepartie_marquer`.
-  Ils appellent l'API de l'ERP : mêmes validations que l'interface.
+  Ils appellent l'API de Périclès : mêmes validations que l'interface.
 
 ### Wiki
 
@@ -142,7 +142,7 @@ API : `GET /api/sponsoring/sponsors`, `POST /api/sponsoring/sponsors`,
 ### Galerie photos
 
 Page **Galerie** (`/galerie`) : les photos de l'asso, stockées dans le **Drive partagé « ARECE – Photos »**, indexées
-par l'ERP et affichées aux membres connectés selon leurs droits (tableau des permissions ci-dessous). Les membres
+par Périclès et affichées aux membres connectés selon leurs droits (tableau des permissions ci-dessous). Les membres
 n'ont pas besoin d'accès au Drive. Lecture seule pour l'instant : on ajoute, range et supprime les photos **dans le Drive**.
 
 - Chaque dossier du Drive est un album, chaque sous-dossier un sous-album ; les photos posées à la racine du Drive
@@ -155,7 +155,7 @@ n'ont pas besoin d'accès au Drive. Lecture seule pour l'instant : on ajoute, ra
   l'EXIF et **sans aucune métadonnée (pas de GPS)**, dans le volume Docker `gallery_thumbs`. HEIC : converti par
   `heic-convert` (les binaires de `sharp` ne lisent pas le HEVC). L'**original** téléchargé depuis la visionneuse
   vient tel quel du Drive, avec ses métadonnées d'origine.
-- Images servies par des **liens signés** (HMAC, valables 1 à 2 h, propres à chaque membre) : l'ERP s'authentifie
+- Images servies par des **liens signés** (HMAC, valables 1 à 2 h, propres à chaque membre) : Périclès s'authentifie
   par un en-tête que les balises `<img>` n'envoient pas. Chaque image revérifie les droits du membre (un compte
   repassé prospect perd l'accès en une minute au plus).
 - Bureau : bouton **Synchroniser**, date et erreurs de la dernière synchro, liens « Ouvrir dans le Drive ».

@@ -7,7 +7,7 @@ const PORT = Number(process.env.SMTP_PORT || 587);
 const USER = process.env.SMTP_USER || '';
 const PASS = process.env.SMTP_PASS || '';
 const FROM = process.env.MAIL_FROM || '';
-const FROM_NAME = process.env.MAIL_FROM_NAME || 'ERP ARECE';
+const FROM_NAME = process.env.MAIL_FROM_NAME || 'Périclès · ARECE';
 // TLS exigé par défaut ; « false » uniquement pour un serveur SMTP de test local
 const REQUIRE_TLS = process.env.SMTP_REQUIRE_TLS !== 'false';
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost').replace(/\/+$/, '');
@@ -57,7 +57,7 @@ function blockHtml(b) {
   return `<p style="margin:0 0 6px;font-size:14px;line-height:1.45;padding-left:14px;text-indent:-10px">• ${escapeHtml(b.item)}${note}</p>`;
 }
 
-// Gabarit commun aux mails de l'ERP, aux couleurs d'arece.eu (bleu nuit, rouge)
+// Gabarit commun aux mails de Périclès, aux couleurs d'arece.eu (bleu nuit, rouge)
 function layout({ title, paragraphs, button, footer }) {
   const text = [title, '', ...paragraphs.map(blockText), '', button ? `${button.label} : ${button.url}` : '', '', footer || '']
     .join('\n')
@@ -66,7 +66,7 @@ function layout({ title, paragraphs, button, footer }) {
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f3f4f7;font-family:Arial,Helvetica,sans-serif;color:#000f2e">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f7;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-top:4px solid #e6172f">
-<tr><td style="background:#000f2e;padding:18px 24px;color:#ffffff;font-weight:bold;letter-spacing:4px;font-size:18px">ARECE</td></tr>
+<tr><td style="background:#000f2e;padding:18px 24px;color:#ffffff;font-weight:bold;letter-spacing:4px;font-size:18px">PÉRICLÈS <span style="font-weight:normal;letter-spacing:2px;font-size:12px;color:#c9cfdb">· ARECE</span></td></tr>
 <tr><td style="padding:28px 24px 8px">
 <h1 style="margin:0 0 16px;font-size:20px;text-transform:uppercase;letter-spacing:1px">${escapeHtml(title)}</h1>
 ${paragraphs.map(blockHtml).join('\n')}

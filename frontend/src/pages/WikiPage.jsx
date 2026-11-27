@@ -39,7 +39,7 @@ export default function WikiPage() {
 
   // Titre de l'onglet : celui de la page du wiki
   useEffect(() => {
-    if (page?.title) document.title = `${page.title} · Wiki · ERP ARECE`;
+    if (page?.title) document.title = `${page.title} · Wiki · Périclès`;
   }, [page?.title]);
 
   const toggleHistory = async () => {

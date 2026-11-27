@@ -94,7 +94,7 @@ export default function AssistantsSection() {
     <section className="card assistants">
       <h2>Assistants IA (MCP)</h2>
       <p className="muted">
-        Connecte Claude, ChatGPT ou Gemini à l'ERP pour consulter et mettre à jour les tâches,
+        Connecte Claude, ChatGPT ou Gemini à Périclès pour consulter et mettre à jour les tâches,
         le wiki et, si tu y as accès, le sponsoring, en langage naturel. L'assistant agit avec tes droits et ne peut rien
         supprimer.
       </p>
@@ -123,7 +123,7 @@ export default function AssistantsSection() {
           </li>
         </ul>
         <p className="muted small">
-          À la première utilisation, l'ERP te demande d'autoriser l'assistant. Exemple de demande : « Quelles sont mes
+          À la première utilisation, Périclès te demande d'autoriser l'assistant. Exemple de demande : « Quelles sont mes
           tâches en retard ? », « Résume la page du wiki sur le règlement FSUK » ou « Passe le partenaire Würth en
           négociation ».
         </p>

@@ -92,19 +92,19 @@ async function buildDigests() {
     const mine = tasks.filter((t) => t.assignees.some((a) => a.userId === u.id));
     if (!u.is_bureau && mine.length === 0) continue; // rien à dire à ce membre cette semaine
     const firstName = String(u.full_name || '').split(' ')[0] || 'à toi';
-    const paragraphs = [`Bonjour ${firstName},`, 'Voici le point de la semaine sur les tâches de l’ERP.'];
+    const paragraphs = [`Bonjour ${firstName},`, 'Voici le point de la semaine sur les tâches de Périclès.'];
     if (mine.length) paragraphs.push(...personalBlocks(mine));
     else paragraphs.push('Aucune tâche ouverte ne t’est assignée en ce moment.');
     if (u.is_bureau) paragraphs.push(...overviewBlocks(tasks));
     const subject = u.is_bureau
-      ? `ERP ARECE · Récap de la semaine : ${tasks.length} tâche(s) ouverte(s)`
-      : `ERP ARECE · Tes ${mine.length} tâche(s) de la semaine`;
+      ? `Périclès · Récap de la semaine : ${tasks.length} tâche(s) ouverte(s)`
+      : `Périclès · Tes ${mine.length} tâche(s) de la semaine`;
     const { text, html } = mailer.layout({
       title: 'Récap de la semaine',
       paragraphs,
       button: { label: 'Ouvrir les tâches', url: `${mailer.PUBLIC_URL}/taches` },
       footer:
-        'Récap envoyé chaque lundi par l’ERP ARECE aux membres qui ont des tâches en cours, et au bureau. ' +
+        'Récap envoyé chaque lundi par Périclès aux membres qui ont des tâches en cours, et au bureau. ' +
         'Pour ne plus le recevoir : Informations de connexion → Notifications par mail.',
     });
     digests.push({ userId: u.id, email: u.email, fullName: u.full_name, isBureau: u.is_bureau, myCount: mine.length, today, subject, text, html });

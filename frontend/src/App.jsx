@@ -45,7 +45,7 @@ function PageTitle() {
   const { pathname } = useLocation();
   useEffect(() => {
     const match = PAGE_TITLES.find(([re]) => re.test(pathname));
-    document.title = match ? `${match[1]} · ERP ARECE` : 'ERP ARECE';
+    document.title = match ? `${match[1]} · Périclès` : 'Périclès';
   }, [pathname]);
   return null;
 }

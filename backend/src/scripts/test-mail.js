@@ -15,11 +15,11 @@ if (!mailer.isEnabled()) {
 
 const { text, html } = mailer.layout({
   title: 'Mail de test',
-  paragraphs: ["Si tu lis ce message, l'ERP ARECE sait envoyer des mails depuis " + mailer.FROM + '.'],
+  paragraphs: ["Si tu lis ce message, Périclès sait envoyer des mails depuis " + mailer.FROM + '.'],
   footer: 'Envoyé par src/scripts/test-mail.js',
 });
 mailer
-  .sendMail({ to, subject: 'ERP ARECE · Mail de test', text, html })
+  .sendMail({ to, subject: 'Périclès · Mail de test', text, html })
   .then((info) => console.log(`✅ Mail envoyé à ${to} (${info.response})`))
   .catch((err) => {
     console.error(`❌ Échec de l'envoi : ${err.message}`);

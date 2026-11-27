@@ -46,7 +46,7 @@ const handler = (fn) => async (args) => {
   } catch (err) {
     if (err instanceof ToolError) return fail(err.message);
     console.error('Outil MCP en erreur :', err);
-    return fail('Erreur interne de l’ERP');
+    return fail('Erreur interne de Périclès');
   }
 };
 
@@ -76,7 +76,7 @@ function resolvePeople(names, members, me) {
     const matches = exact.length ? exact : n.length >= 3 ? members.filter((m) => norm(m.fullName).split(' ').some((w) => w.startsWith(n)) || norm(m.fullName).startsWith(n)) : [];
     if (matches.length === 1) return { userId: matches[0].id, fullName: matches[0].fullName };
     if (matches.length > 1) throw new ToolError(`Responsable « ${name} » ambigu : ${matches.map((m) => m.fullName).join(', ')}`);
-    notes.push(`« ${name} » n'a pas de compte ERP : ajouté comme responsable sans compte`);
+    notes.push(`« ${name} » n'a pas de compte Périclès : ajouté comme responsable sans compte`);
     return { name };
   });
   return { people, notes };
@@ -146,14 +146,14 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'format AAAA-MM-JJ');
 function buildServer({ token, me }) {
   const call = client(token);
   const server = new McpServer(
-    { name: 'erp-arece', version: '1.0.0' },
+    { name: 'pericles-arece', version: '1.0.0' },
     {
       instructions:
-        "ERP de l'association ARECE (Formula Student, ECE Paris). Tu agis au nom du membre connecté, avec ses droits. " +
+        "Périclès, l'outil interne de l'association ARECE (Formula Student, ECE Paris). Tu agis au nom du membre connecté, avec ses droits. " +
         'Tâches : Kanban de l’asso (À faire / En cours / Fait), avec pôle, priorité, échéance, responsables et commentaires. ' +
           'Wiki : documentation de l’asso, pages Markdown (diagrammes Mermaid acceptés dans des blocs ```mermaid) rangées par catégorie, avec historique des versions ; lis une page avant de la modifier et préfère des remplacements ciblés. ' +
         (me.canSponsoring ? 'Sponsoring : suivi des partenaires (statut, rang, contacts, contreparties promises). ' : '') +
-        "Aucune suppression n'est possible depuis l'assistant : elle se fait dans l'ERP (https://erp.arece.eu). " +
+        "Aucune suppression n'est possible depuis l'assistant : elle se fait dans Périclès (https://erp.arece.eu). " +
         'Appelle erp_reference pour connaître les pôles, les membres et les valeurs possibles avant de créer ou modifier. ' +
         'Réponds en français.',
     }
@@ -166,7 +166,7 @@ function buildServer({ token, me }) {
   server.registerTool(
     'erp_reference',
     {
-      title: 'Référentiel de l’ERP',
+      title: 'Référentiel de Périclès',
       description: 'Membre connecté, pôles, membres pouvant être responsables, et valeurs possibles (statuts, priorités, rangs de sponsoring).',
       inputSchema: {},
       annotations: RO,
@@ -439,7 +439,7 @@ function buildServer({ token, me }) {
     'wiki_creer_page',
     {
       title: 'Créer une page du wiki',
-      description: 'Crée une page du wiki en Markdown dans une catégorie existante (les catégories se gèrent dans l’ERP).',
+      description: 'Crée une page du wiki en Markdown dans une catégorie existante (les catégories se gèrent dans Périclès).',
       inputSchema: {
         titre: z.string().min(1).max(200),
         categorie: z.string().min(1).describe('Nom de la catégorie (voir wiki_chercher)'),
@@ -459,7 +459,7 @@ function buildServer({ token, me }) {
       title: 'Modifier une page du wiki',
       description:
         'Modifie une page : titre, catégorie, et contenu de trois façons au choix : « remplacements » ciblés (recommandé), ' +
-        '« ajouter_a_la_fin », ou « contenu » complet. Chaque modification crée une version restaurable dans l’ERP. ' +
+        '« ajouter_a_la_fin », ou « contenu » complet. Chaque modification crée une version restaurable dans Périclès. ' +
         'Passe « version » (renvoyée par wiki_lire) pour ne pas écraser une modification faite entre-temps par quelqu’un d’autre.',
       inputSchema: {
         page: z.string().min(1).describe('Identifiant de la page ou son titre'),

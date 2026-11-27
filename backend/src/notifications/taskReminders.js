@@ -52,10 +52,10 @@ function buildMail({ fullName, tasks }) {
     ],
     button: { label: 'Voir mes tâches', url: `${mailer.PUBLIC_URL}/taches` },
     footer:
-      'Relance quotidienne de l’ERP ARECE, envoyée tant qu’une de tes tâches « À faire » est en retard. ' +
+      'Relance quotidienne de Périclès, envoyée tant qu’une de tes tâches « À faire » est en retard. ' +
       'Pour ne plus la recevoir : Informations de connexion → Notifications par mail.',
   });
-  return { subject: `ERP ARECE · ${n > 1 ? `${n} tâches en retard` : '1 tâche en retard'}`, text, html };
+  return { subject: `Périclès · ${n > 1 ? `${n} tâches en retard` : '1 tâche en retard'}`, text, html };
 }
 
 // Envoie les relances du jour qui ne l'ont pas encore été ; renvoie un bilan
