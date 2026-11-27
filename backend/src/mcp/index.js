@@ -36,7 +36,7 @@ function mountMcp(app) {
     authorization_servers: [oauth.PUBLIC_URL],
     scopes_supported: [oauth.SCOPE],
     bearer_methods_supported: ['header'],
-    resource_name: 'ERP ARECE',
+    resource_name: 'Périclès (ARECE)',
     resource_documentation: `${oauth.PUBLIC_URL}/connexion`,
   };
   app.options(['/.well-known/oauth-authorization-server', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'], metadataCors);
@@ -50,7 +50,7 @@ function mountMcp(app) {
       provider: oauth.provider,
       issuerUrl: new URL(oauth.PUBLIC_URL),
       resourceServerUrl: new URL(oauth.MCP_URL),
-      resourceName: 'ERP ARECE',
+      resourceName: 'Périclès (ARECE)',
       serviceDocumentationUrl: new URL(`${oauth.PUBLIC_URL}/connexion`),
       scopesSupported: [oauth.SCOPE],
       // Les assistants appellent depuis leurs serveurs : beaucoup de membres derrière une même IP

@@ -55,7 +55,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       MAIL_FROM: ${MAIL_FROM:-}
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-ERP ARECE}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Périclès · ARECE}
       SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-true}
       # Relance quotidienne des tâches « À faire » en retard (TASK_REMINDERS=off pour couper)
       TASK_REMINDERS: ${TASK_REMINDERS:-on}

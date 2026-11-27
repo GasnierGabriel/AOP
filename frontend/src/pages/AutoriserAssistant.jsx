@@ -41,7 +41,7 @@ export default function AutoriserAssistant({ session }) {
       {request && (
         <>
           <p>
-            <strong>{request.client.name}</strong> demande à accéder à l'ERP ARECE au nom de{' '}
+            <strong>{request.client.name}</strong> demande à accéder à Périclès au nom de{' '}
             <strong>{session?.user.fullName}</strong>.
           </p>
           <p className="muted small">
