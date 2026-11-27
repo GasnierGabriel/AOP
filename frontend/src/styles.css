@@ -2055,13 +2055,18 @@ summary:focus-visible,
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .album-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); text-decoration: none; }
+/* Couverture au format fixe 4:3, quelle que soit la photo (portrait ou paysage) : l'image est posée en absolu
+   et recadrée, elle ne peut donc pas agrandir la carte */
 .album-cover {
+  position: relative;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 3;
+  overflow: hidden;
   background: var(--surface-2);
 }
-.album-cover img { width: 100%; height: 100%; object-fit: cover; }
+.album-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .album-cover-empty { font-size: 2rem; opacity: 0.4; }
 .album-card-body { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px 14px; }
 .album-card-name { font-weight: 600; line-height: 1.3; }
@@ -2086,7 +2091,8 @@ summary:focus-visible,
   background: rgba(255, 255, 255, 0.06);
   cursor: zoom-in;
 }
-.photo-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s, opacity 0.2s; }
+.photo-tile { position: relative; }
+.photo-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.25s, opacity 0.2s; }
 .photo-tile:hover img { transform: scale(1.03); }
 .photo-tile-pending { display: grid; place-items: center; width: 100%; height: 100%; font-size: 1.4rem; opacity: 0.5; }
 .photo-grid-end { min-height: 1px; padding: 12px 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
@@ -2122,6 +2128,8 @@ summary:focus-visible,
 .gallery-sync-error { color: var(--error); }
 .gallery-sync-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .gallery-sync-alert { flex-basis: 100%; margin: 0; }
+.gallery-album-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.gallery-cover-hint { margin: -8px 0 0; }
 
 /* Visionneuse plein écran (fenêtre native) */
 .modal.photo-viewer {
@@ -2162,6 +2170,35 @@ summary:focus-visible,
 .photo-viewer-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .photo-viewer .btn-ghost { color: var(--white); }
 .photo-viewer-close { font-size: 1.1rem; }
+.photo-viewer-cover { position: relative; }
+.photo-viewer-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 2;
+  min-width: 240px;
+  max-width: min(360px, calc(100vw - 24px));
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 4px;
+  background: #1b2233;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+.photo-viewer-menu button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--white);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.photo-viewer-menu button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.photo-viewer-menu button:disabled { color: var(--muted); cursor: default; }
 .photo-viewer-alert { margin: 0 16px 8px; }
 .photo-viewer-stage {
   position: relative;
@@ -2172,7 +2209,8 @@ summary:focus-visible,
   touch-action: pan-y pinch-zoom; /* balayage horizontal pour changer de photo */
   user-select: none;
 }
-.photo-viewer-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+/* Posée en absolu sur toute la zone : une photo en portrait tient toujours en hauteur, sans déborder */
+.photo-viewer-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .photo-viewer-pending { max-width: 28em; padding: 0 24px; text-align: center; color: var(--muted); }
 .photo-viewer-nav {
   position: absolute;

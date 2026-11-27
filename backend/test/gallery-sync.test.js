@@ -232,6 +232,30 @@ test.describe('synchro de la galerie', { skip }, () => {
     assert.equal((await album(DRIVE)).is_deleted, true); // « Non classé » vide : masqué
   });
 
+  test('couverture choisie : photo de l’album ou d’un sous-album, oubliée si la photo sort de l’album', async () => {
+    const service = require('../src/gallery/galleryService');
+    const viewer = { id: 1, canManage: true };
+    const y2024 = await album('y2024');
+    const fsuk3 = await photo('fsuk3'); // dans le sous-album FSUK
+    await pool.query("UPDATE gallery_photos SET thumb_status = 'ok' WHERE drive_file_id IN ('fsuk3', 'y1')");
+    const res = await service.setAlbumCover(y2024.id, fsuk3.id, viewer);
+    assert.equal(res.album.cover.id, fsuk3.id);
+    assert.equal(res.album.coverIsManual, true);
+    const listed = (await service.listAlbums(viewer)).find((a) => a.id === y2024.id);
+    assert.equal(listed.cover.id, fsuk3.id);
+    const outside = await photo('n1');
+    assert.ok((await service.setAlbumCover(y2024.id, outside.id, viewer)).error); // photo d'un autre album
+    assert.equal(await service.setAlbumCover(999999, fsuk3.id, viewer), null);
+    // La photo choisie part dans un autre album : retour à la couverture automatique
+    drive.update('fsuk3', { parents: ['atelier'] });
+    await sync();
+    assert.equal((await album('y2024')).cover_photo_id, null);
+    // Retour à l'automatique à la main
+    await service.setAlbumCover(y2024.id, (await photo('y1')).id, viewer);
+    const reset = await service.setAlbumCover(y2024.id, null, viewer);
+    assert.equal(reset.album.coverIsManual, false);
+  });
+
   test('une seule synchro à la fois (verrou PostgreSQL)', async () => {
     const holder = await pool.connect();
     try {

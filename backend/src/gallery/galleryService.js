@@ -11,7 +11,7 @@ const MAX_PAGE = 120;
 
 const ALBUM_COLUMNS = `
   a.id, a.drive_folder_id, a.name, a.parent_id, a.photo_count, a.total_photo_count, a.first_taken_at, a.last_taken_at,
-  COALESCE(manual.id, auto.id) AS cover_id`;
+  COALESCE(manual.id, auto.id) AS cover_id, manual.id AS manual_cover_id`;
 const ALBUM_JOINS = `
   LEFT JOIN gallery_photos manual ON manual.id = a.cover_photo_id AND NOT manual.is_deleted AND manual.thumb_status = 'ok'
   LEFT JOIN gallery_photos auto ON auto.id = a.auto_cover_photo_id AND NOT auto.is_deleted AND auto.thumb_status = 'ok'`;
@@ -29,7 +29,7 @@ function formatAlbum(r, viewer) {
     cover: r.cover_id
       ? { id: r.cover_id, thumbSm: signing.thumbUrl(r.cover_id, 'sm', viewer.id), thumbLg: signing.thumbUrl(r.cover_id, 'lg', viewer.id) }
       : null,
-    ...(viewer.canManage && { driveUrl: config.folderUrl(r.drive_folder_id) }),
+    ...(viewer.canManage && { driveUrl: config.folderUrl(r.drive_folder_id), coverIsManual: Boolean(r.manual_cover_id) }),
   };
 }
 
@@ -215,6 +215,31 @@ async function getSyncStatus() {
   };
 }
 
+/**
+ * Couverture d'un album choisie à la main (bureau) : une photo de l'album ou de l'un de ses sous-albums.
+ * photoId null : retour à la couverture automatique (première photo par date).
+ * Renvoie null si l'album n'existe pas, { error } si la photo ne convient pas, sinon l'album mis à jour.
+ */
+async function setAlbumCover(albumId, photoId, viewer) {
+  const album = await query('SELECT id FROM gallery_albums WHERE id = $1 AND NOT is_deleted', [albumId]);
+  if (album.rows.length === 0) return null;
+  if (photoId !== null) {
+    const { rows } = await query(
+      `WITH RECURSIVE tree AS (
+         SELECT id FROM gallery_albums WHERE id = $1
+         UNION
+         SELECT a.id FROM gallery_albums a JOIN tree t ON a.parent_id = t.id WHERE NOT a.is_deleted
+       )
+       SELECT 1 FROM gallery_photos p
+        WHERE p.id = $2 AND NOT p.is_deleted AND p.album_id IN (SELECT id FROM tree)`,
+      [albumId, photoId]
+    );
+    if (rows.length === 0) return { error: "Cette photo n'est ni dans cet album ni dans l'un de ses sous-albums" };
+  }
+  await query('UPDATE gallery_albums SET cover_photo_id = $2, updated_at = NOW() WHERE id = $1', [albumId, photoId]);
+  return getAlbum(albumId, viewer);
+}
+
 // Membre (pour vérifier ses droits à chaque image, sans en-tête d'authentification)
 async function getUserForAccess(userId) {
   const { rows } = await query('SELECT id, status, is_bureau, level FROM users WHERE id = $1', [userId]);
@@ -230,5 +255,6 @@ module.exports = {
   requestSync,
   getSyncStatus,
   getUserForAccess,
+  setAlbumCover,
   decodeCursor,
 };

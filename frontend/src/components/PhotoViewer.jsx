@@ -9,10 +9,14 @@ const formatTakenAt = (value) =>
 
 // Visionneuse plein écran (fenêtre native : focus piégé, Échap, geste retour) : flèches du clavier, balayage sur mobile,
 // compteur « 12 / 148 », téléchargement de l'original, préchargement des photos voisines.
-export default function PhotoViewer({ photos, index, total, canManage, onIndexChange, onClose, onNeedMore }) {
+// Bureau (coverTargets) : choisir la photo comme couverture de son album ou d'un album parent.
+export default function PhotoViewer({ photos, index, total, canManage, coverTargets, onSetCover, onIndexChange, onClose, onNeedMore }) {
   const photo = photos[index];
   const [downloadError, setDownloadError] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [coverMenu, setCoverMenu] = useState(false);
+  const [coverStatus, setCoverStatus] = useState('');
+  const [coverBusy, setCoverBusy] = useState(false);
   const swipe = useRef(null);
   const hasPrev = index > 0;
   const hasNext = index < photos.length - 1;
@@ -38,6 +42,8 @@ export default function PhotoViewer({ photos, index, total, canManage, onIndexCh
   // Photos voisines préchargées ; page suivante demandée à l'approche de la fin de la liste
   useEffect(() => {
     setDownloadError('');
+    setCoverStatus('');
+    setCoverMenu(false);
     for (const neighbour of [photos[index + 1], photos[index - 1]]) {
       if (neighbour?.thumbLg) new Image().src = `${API_BASE}${neighbour.thumbLg}`;
     }
@@ -71,6 +77,20 @@ export default function PhotoViewer({ photos, index, total, canManage, onIndexCh
     }
   };
 
+  const chooseCover = async (target) => {
+    setCoverBusy(true);
+    setDownloadError('');
+    try {
+      await onSetCover(target.id, photo.id);
+      setCoverStatus(`Couverture de « ${target.name} » mise à jour`);
+      setCoverMenu(false);
+    } catch (err) {
+      setDownloadError(errorMessage(err, 'Impossible de changer la couverture'));
+    } finally {
+      setCoverBusy(false);
+    }
+  };
+
   if (!photo) return null;
   const src = photo.thumbLg ? `${API_BASE}${photo.thumbLg}` : null;
 
@@ -84,6 +104,37 @@ export default function PhotoViewer({ photos, index, total, canManage, onIndexCh
           <span className="photo-viewer-date">{formatTakenAt(photo.takenAt)}</span>
         </p>
         <div className="photo-viewer-actions">
+          {coverTargets?.length > 0 && photo.thumbSm && (
+            <div className="photo-viewer-cover">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setCoverMenu((open) => !open)}
+                aria-expanded={coverMenu}
+                aria-controls="photo-viewer-cover-menu"
+                aria-label="Choisir comme couverture d’album"
+              >
+                <span aria-hidden="true">★</span>
+                <span className="photo-viewer-label" aria-hidden="true">
+                  Couverture
+                </span>
+              </button>
+              {coverMenu && (
+                <ul id="photo-viewer-cover-menu" className="photo-viewer-menu">
+                  {coverTargets.map((target) => {
+                    const current = target.coverId === photo.id;
+                    return (
+                      <li key={target.id}>
+                        <button type="button" onClick={() => chooseCover(target)} disabled={coverBusy || current}>
+                          {current ? '✓ Couverture actuelle de' : 'Couverture de'} « {target.name} »
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
           {canManage && photo.driveUrl && (
             <a href={photo.driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm photo-viewer-drive">
               Drive
@@ -101,6 +152,9 @@ export default function PhotoViewer({ photos, index, total, canManage, onIndexCh
         </div>
       </div>
       {downloadError && <div role="alert" className="alert alert-error photo-viewer-alert">{downloadError}</div>}
+      <p role="status" className={coverStatus ? 'alert alert-success photo-viewer-alert' : 'sr-only'}>
+        {coverStatus}
+      </p>
 
       <div className="photo-viewer-stage" onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => (swipe.current = null)}>
         {src ? (
