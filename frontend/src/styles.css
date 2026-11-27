@@ -286,8 +286,8 @@ a:hover {
 .navbar-links .nav-account { display: none; }
 /* Tablette et mobile : bouton ☰ puis liens en pleine largeur sous la barre ; le nom passe dans le menu
    (même seuil pour les deux : le nom n'est jamais masqué sans être repris dans le menu).
-   70em : en dessous, les rubriques du bureau + le nom ne tiennent plus sur une ligne */
-@media (max-width: 70em) {
+   80em : en dessous, logo + « Périclès » + rubriques du bureau + nom ne tiennent plus sur une ligne */
+@media (max-width: 80em) {
   .navbar-name { display: none; }
   .navbar-inner { gap: 16px; }
   .menu-open .navbar-links .nav-account {
