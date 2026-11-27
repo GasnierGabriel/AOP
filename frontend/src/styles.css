@@ -224,6 +224,18 @@ a:hover {
 }
 .navbar-brand:hover { text-decoration: none; }
 .navbar-logo { display: block; height: 40px; width: auto; }
+/* Nom de l'outil à côté du logo ARECE, séparé par un filet */
+.navbar-brand { gap: 14px; flex-shrink: 0; }
+.navbar-product {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .navbar-links {
   display: flex;
   align-self: stretch;
@@ -1784,6 +1796,8 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 40em) {
   .navbar-inner { gap: 10px; }
   .navbar-logo { height: 32px; }
+  .navbar-brand { gap: 10px; }
+  .navbar-product { padding-left: 10px; font-size: 0.85rem; letter-spacing: 0.12em; }
   .navbar-name { display: none; }
   .navbar-user { margin-left: auto; }
   .navbar-user .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.9rem; letter-spacing: 0; }

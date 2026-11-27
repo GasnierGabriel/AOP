@@ -108,8 +108,11 @@ function Navbar({ session, onLogout }) {
   return (
     <header ref={headerRef} className={`navbar ${menuOpen ? 'menu-open' : ''}`}>
       <div className="navbar-inner">
-        <Link to="/annuaire" className="navbar-brand">
-          <img src={LOGO_URL} {...LOGO_SIZE} alt="ARECE, retour à l’annuaire" className="navbar-logo" />
+        <Link to="/annuaire" className="navbar-brand" aria-label="Périclès · ARECE, retour à l’annuaire">
+          <img src={LOGO_URL} {...LOGO_SIZE} alt="" className="navbar-logo" />
+          <span className="navbar-product" aria-hidden="true">
+            Périclès
+          </span>
         </Link>
         <button
           ref={toggleRef}
