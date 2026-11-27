@@ -40,13 +40,21 @@ const service = {
     syncRequests += 1;
   },
   getSyncStatus: async () => ({ configured: true }),
+  setAlbumCover: async (id, photoId) => {
+    if (id !== 1) return null;
+    if (photoId === 999) return { error: "Cette photo n'est pas dans l'album" };
+    coverCalls.push(photoId);
+    return { album: { id: 1 }, breadcrumb: [], subAlbums: [] };
+  },
 };
+const coverCalls = [];
 const drive = { download: async () => new Response('JPEG-ORIGINAL', { headers: { 'content-length': '13' } }) };
 
 let baseUrl;
 let server;
 test.before(async () => {
   const app = express();
+  app.use(express.json());
   const authenticate = (req, res, next) => {
     const user = USERS[req.get('x-test-user')];
     if (!user) return res.status(401).json({ error: 'Authentification requise' });
@@ -75,7 +83,12 @@ test.after(() => {
   fs.rmSync(thumbsDir, { recursive: true, force: true });
 });
 
-const call = (method, url, who) => fetch(`${baseUrl}${url}`, { method, headers: who ? { 'x-test-user': who } : {} });
+const call = (method, url, who, body) =>
+  fetch(`${baseUrl}${url}`, {
+    method,
+    headers: { ...(who && { 'x-test-user': who }), ...(body !== undefined && { 'content-type': 'application/json' }) },
+    ...(body !== undefined && { body: JSON.stringify(body) }),
+  });
 
 const MEMBER_ROUTES = [
   ['GET', '/gallery/albums', 200],
@@ -109,6 +122,25 @@ test('POST /gallery/sync : bureau uniquement', async () => {
   }
   assert.equal(syncRequests, before + 1);
   assert.equal((await call('POST', '/gallery/sync')).status, 401);
+});
+
+test('PUT /gallery/albums/:id/cover : bureau uniquement', async () => {
+  coverCalls.length = 0;
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', 'bureau', { photoId: 5 })).status, 200);
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', 'bureau', { photoId: null })).status, 200); // couverture automatique
+  assert.deepEqual(coverCalls, [5, null]);
+  for (const who of [...VIEWERS.filter((w) => w !== 'bureau'), ...REFUSED]) {
+    assert.equal((await call('PUT', '/gallery/albums/1/cover', who, { photoId: 5 })).status, 403, who);
+  }
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', undefined, { photoId: 5 })).status, 401);
+  assert.deepEqual(coverCalls, [5, null]);
+});
+
+test('PUT /gallery/albums/:id/cover : photo invalide, hors de l’album, album inconnu', async () => {
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', 'bureau', { photoId: 'abc' })).status, 400);
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', 'bureau', {})).status, 400);
+  assert.equal((await call('PUT', '/gallery/albums/1/cover', 'bureau', { photoId: 999 })).status, 400);
+  assert.equal((await call('PUT', '/gallery/albums/42/cover', 'bureau', { photoId: 5 })).status, 404);
 });
 
 test('GET /gallery/sync/status : bureau uniquement', async () => {

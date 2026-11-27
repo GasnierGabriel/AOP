@@ -118,6 +118,19 @@ async function resolveLinks(db) {
 // Nombre de photos, période et couverture de chaque album (sous-albums compris pour le total et la période).
 // Couverture automatique : de préférence une photo de l'album lui-même, déjà miniaturisée, la plus ancienne.
 async function recomputeAlbums(db) {
+  // Couverture choisie à la main dont la photo a été déplacée hors de l'album (et de ses sous-albums) : oubliée.
+  // Une photo seulement supprimée reste choisie (elle revient si on la restaure ; la couverture automatique la remplace entre-temps).
+  await db.query(
+    `WITH RECURSIVE tree AS (
+       SELECT id AS ancestor, id AS descendant FROM gallery_albums
+       UNION
+       SELECT t.ancestor, a.id FROM tree t JOIN gallery_albums a ON a.parent_id = t.descendant
+     )
+     UPDATE gallery_albums a SET cover_photo_id = NULL, updated_at = NOW()
+       FROM gallery_photos p
+      WHERE p.id = a.cover_photo_id
+        AND NOT EXISTS (SELECT 1 FROM tree t WHERE t.ancestor = a.id AND t.descendant = p.album_id)`
+  );
   await db.query(
     `WITH RECURSIVE live AS (
        SELECT id, parent_id FROM gallery_albums WHERE NOT is_deleted

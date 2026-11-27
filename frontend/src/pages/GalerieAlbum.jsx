@@ -141,6 +141,18 @@ export default function GalerieAlbum() {
       { replace }
     );
 
+  // Bureau : couverture choisie pour cet album ou un album parent (null = retour à la couverture automatique)
+  const [coverError, setCoverError] = useState('');
+  const setCover = async (targetId, photoId) => {
+    await api.put(`/gallery/albums/${targetId}/cover`, { photoId });
+    const { data } = await api.get(`/gallery/albums/${albumId}`);
+    setInfo(data);
+  };
+  const resetCover = () => {
+    setCoverError('');
+    setCover(Number(albumId), null).catch((err) => setCoverError(errorMessage(err, 'Impossible de rétablir la couverture automatique')));
+  };
+
   const openPhoto = (index) => {
     openedHere.current = true;
     setNotice('');
@@ -184,11 +196,24 @@ export default function GalerieAlbum() {
           )}
         </div>
         {album?.driveUrl && (
-          <a href={album.driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
-            Ouvrir dans le Drive
-          </a>
+          <div className="gallery-album-actions">
+            {album.coverIsManual && (
+              <button type="button" className="btn btn-outline btn-sm" onClick={resetCover} title="La couverture redevient la première photo par date">
+                Couverture automatique
+              </button>
+            )}
+            <a href={album.driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
+              Ouvrir dans le Drive
+            </a>
+          </div>
         )}
       </div>
+      {album?.driveUrl && (
+        <p className="muted small gallery-cover-hint">
+          Bureau : pour changer la couverture, ouvre une photo puis « ★ Couverture ».
+        </p>
+      )}
+      {coverError && <div role="alert" className="alert alert-error">{coverError}</div>}
 
       {error && <div role="alert" className="alert alert-error">{error}</div>}
       {notice && <div role="status" className="alert alert-info">{notice}</div>}
@@ -259,6 +284,12 @@ export default function GalerieAlbum() {
           index={viewerIndex}
           total={total}
           canManage={Boolean(album?.driveUrl)}
+          coverTargets={
+            album?.driveUrl
+              ? [{ id: album.id, name: album.name, coverId: album.cover?.id }, ...[...info.breadcrumb].reverse()]
+              : null
+          }
+          onSetCover={setCover}
           onIndexChange={(index) => setPhotoParam(photos[index].id, true)}
           onClose={closeViewer}
           onNeedMore={loadMore}

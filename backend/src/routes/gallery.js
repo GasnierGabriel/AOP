@@ -157,6 +157,18 @@ function createGalleryRouter({
     res.json(result);
   });
 
+  // PUT /albums/:id/cover { photoId } — bureau : couverture choisie (photo de l'album ou d'un sous-album), null = automatique
+  router.put('/albums/:id/cover', requireManager, async (req, res) => {
+    const id = parseId(req.params.id);
+    const raw = req.body?.photoId;
+    const photoId = raw === null ? null : parseId(raw);
+    if (raw !== null && !photoId) return res.status(400).json({ error: 'Photo invalide' });
+    const result = id && (await service.setAlbumCover(id, photoId, viewerOf(req)));
+    if (!result) return res.status(404).json({ error: 'Album introuvable' });
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(result);
+  });
+
   // POST /sync — bureau : synchro incrémentale immédiate (faite par le worker)
   router.post('/sync', requireManager, async (req, res) => {
     if (!isEnabled()) return res.status(503).json({ error: 'Galerie non configurée (GALLERY_SHARED_DRIVE_ID)' });
