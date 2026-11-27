@@ -210,7 +210,9 @@ export default function GalerieAlbum() {
       </div>
       {album?.driveUrl && (
         <p className="muted small gallery-cover-hint">
-          Bureau : pour changer la couverture, ouvre une photo puis « ★ Couverture ».
+          {photos?.length === 0 && info?.subAlbums.length > 0
+            ? `Bureau : pour changer la couverture, ouvre une photo d’un sous-album, « ★ Couverture », puis « Couverture de « ${album.name} » ».`
+            : 'Bureau : pour changer la couverture, ouvre une photo puis « ★ Couverture » (aussi possible depuis un sous-album).'}
         </p>
       )}
       {coverError && <div role="alert" className="alert alert-error">{coverError}</div>}
